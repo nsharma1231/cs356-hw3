@@ -134,13 +134,17 @@ public class Router extends Device
 			RouteEntry bestMatch = this.routeTable.lookup(dstAddr);
 	
 			// If no entry matched, do nothing
-			if (null == bestMatch)
-			{ return; }
+			if (null == bestMatch) {
+				System.out.println("best match is null"); 
+				return; 
+			}
 	
 			// Make sure we don't sent a packet back out the interface it came in
 			Iface outIface = bestMatch.getInterface();
-			if (outIface == inIface)
-			{ return; }
+			if (outIface == inIface) { 
+				System.out.println("outIface = inIface sending packet to itself");
+				return; 
+			}
 	
 			// Set source MAC address in Ethernet header
 			ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
@@ -152,8 +156,10 @@ public class Router extends Device
 	
 			// Set destination MAC address in Ethernet header
 			ArpEntry arpEntry = this.arpCache.lookup(nextHop);
-			if (null == arpEntry)
-			{ return; }
+			if (null == arpEntry) {
+				System.out.println("arp entry is null");
+				return;
+			}
 			etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
 
 			IPv4 ip = new IPv4();
