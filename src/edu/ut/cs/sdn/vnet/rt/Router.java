@@ -99,7 +99,7 @@ public class Router extends Device
 		/********************************************************************/
 	}
 
-	private void generateICMP(Ethernet etherPacket, Iface inIface, byte type) {
+	private void generateICMP(Ethernet etherPacket, Iface inIface, byte type, byte code) {
 		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
 		
 		Ethernet ether = new Ethernet();
@@ -157,7 +157,7 @@ public class Router extends Device
         ipPacket.setTtl((byte)(ipPacket.getTtl()-1));
         if (0 == ipPacket.getTtl())
         {
-			this.generateICMP(etherPacket, inIface, (byte) 11);
+			this.generateICMP(etherPacket, inIface, (byte) 11, (byte) 0);
 			return;
 		}
         
@@ -191,7 +191,7 @@ public class Router extends Device
 
         // If no entry matched, do nothing
         if (null == bestMatch) {
-			this.generateICMP(etherPacket, inIface, (byte) 3);
+			this.generateICMP(etherPacket, inIface, (byte) 3, (byte) 0);
 			return;
 		}
 
@@ -211,7 +211,7 @@ public class Router extends Device
         // Set destination MAC address in Ethernet header
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (null == arpEntry) {
-			this.generateICMP(etherPacket, inIface, (byte) 1);
+			this.generateICMP(etherPacket, inIface, (byte) 3, (byte) 1);
 			return; 
 		}
         etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
