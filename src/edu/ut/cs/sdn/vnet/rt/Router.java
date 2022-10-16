@@ -184,7 +184,7 @@ public class Router extends Device
 			icmp.setPayload(data);
 			
 			this.sendPacket(ether, inIface);
-			System.out.println(etherPacket.toString());
+			System.out.println(ether.toString());
 			System.out.println("sent icmp packet");
 			return;
 		}
