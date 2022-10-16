@@ -124,55 +124,24 @@ public class Router extends Device
         if (0 == ipPacket.getTtl())
         {
 			Ethernet ether = new Ethernet();
-			// EtherType - set to Ethernet.TYPE_IPv4
 			ether.setEtherType(Ethernet.TYPE_IPv4);
-			// Source MAC - set to the MAC address of the out interface obtained by performing a
-			// lookup in the route table (invariably this will be the interface on which the original packet arrived)
-			// ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
 			ether.setSourceMACAddress(etherPacket.getDestinationMACAddress());
-			// Destination MAC - set to the MAC address of the next hop, determined by performing a
-			// lookup in the route table followed by a lookup in the ARP cache
+			// TODO: do we need to look up in the arp cache?
 			ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
 
-			IPv4 ip_packet = (IPv4)etherPacket.getPayload();
-			/* int dstAddr = ip_packet.getSourceAddress(); 
-	
-			// Find matching route table entry 
-			RouteEntry bestMatch = this.routeTable.lookup(dstAddr);
-	
-			// If no entry matched, do nothing
-			if (null == bestMatch) {
-				System.out.println("best match is null"); 
-				return; 
-			}
-			
-			int nextHop = bestMatch.getGatewayAddress();
-			if (0 == nextHop)
-			{ nextHop = dstAddr; }
-	
-			// Set destination MAC address in Ethernet header
-			ArpEntry arpEntry = this.arpCache.lookup(nextHop);
-			if (null == arpEntry) {
-				System.out.println("arp entry is null");
-				return;
-			} */
-			// ether.setDestinationMACAddress(arpEntry.getMac().toBytes());
-
 			IPv4 ip = new IPv4();
-			ip.setTtl((byte)64);
+			ip.setTtl((byte) 64);
 			ip.setProtocol(IPv4.PROTOCOL_ICMP);
-			// Source IP - set to the IP address of the interface on which the original packet arrived
 			ip.setSourceAddress(inIface.getIpAddress());
-			//  set to the source IP of the original packet the ICMP header you must populate the following fields:
-			ip.setDestinationAddress(ip_packet.getSourceAddress());
+			ip.setDestinationAddress(ipPacket.getSourceAddress());
 
-			ICMP icmp = new ICMP();
-			icmp.setIcmpCode((byte)0);
-			icmp.setIcmpType((byte)11);
+			ICMP icmp = new ICMP();			
+			icmp.setIcmpType((byte) 11);
+			icmp.setIcmpCode((byte) 0);
 			
 			Data data = new Data();
-			byte[] payloadData = new byte[ip_packet.getHeaderLength() + 12]; // ip.length + 12
-			byte[] _payloadData = ip_packet.serialize();
+			byte[] payloadData = new byte[ipPacket.getHeaderLength() * 4 + 12];
+			byte[] _payloadData = ipPacket.serialize();
 			for (int i = 4; i < payloadData.length && (i - 4) < _payloadData.length; i++) {
 				payloadData[i] = _payloadData[i - 4];
 			}
