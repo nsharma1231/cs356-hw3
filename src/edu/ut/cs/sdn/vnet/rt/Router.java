@@ -165,11 +165,29 @@ public class Router extends Device
 			ICMP icmp = new ICMP();
 			icmp.setIcmpCode((byte)0);
 			icmp.setIcmpType((byte)11);
-
+			// Create a byte array and initialize with 0's.
+			// (1) 4 bytes of padding
+			// (2) the original IP header from the packet that triggered the error message
+			// (3) the 8 bytes following the IP header in the original packet.
+			// Then, leave 1st 4 bytes of the array and fill in the other required data as specified in the assignment description.
 			Data data = new Data();
+			byte[] payloadData = new byte[ip_packet.getHeaderLength() + 12]; // ip.length + 12
+			byte[] _payloadData = ip_packet.serialize();
+			for (int i = 4; i < payloadData.length && (i - 4) < _payloadData.length; i++) {
+				payloadData[i] = _payloadData[i - 4];
+			}
+			
+			data.setData(payloadData);
+
 			ether.setPayload(ip);
 			ip.setPayload(icmp);
 			icmp.setPayload(data);
+			
+			// send it on the interface that is obtained from the longest prefix match 
+			// in the route table for the source IP of original packet 
+			// (invariably this will be the interface on which the original packet arrived). 
+			// You should drop the original packet after sending the time exceeded message.
+			this.sendPacket(ether, inIface);
 		}
         
         // Reset checksum now that TTL is decremented
