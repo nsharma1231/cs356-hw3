@@ -6,6 +6,8 @@ import edu.ut.cs.sdn.vnet.Iface;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.ICMP;
+import net.floodlightcontroller.packet.Data;
 
 /**
  * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
@@ -59,7 +61,7 @@ public class Router extends Device
 	 * @param arpCacheFile the name of the file containing the ARP cache
 	 */
 	public void loadArpCache(String arpCacheFile)
-	{
+	{ 
 		if (!arpCache.load(arpCacheFile))
 		{
 			System.err.println("Error setting up ARP cache from file "
@@ -119,7 +121,56 @@ public class Router extends Device
         // Check TTL
         ipPacket.setTtl((byte)(ipPacket.getTtl()-1));
         if (0 == ipPacket.getTtl())
-        { return; }
+        { 
+			Ethernet ether = new Ethernet();
+			ether.setEtherType(Ethernet.TYPE_IPv4);
+			// set to the MAC address of the out interface obtained by performing a lookup in the route table
+			// invariably this will be the interface on which the original packet arrived
+
+			IPv4 ip_packet = (IPv4)etherPacket.getPayload();
+			int dstAddr = ip_packet.getSourceAddress();
+	
+			// Find matching route table entry 
+			RouteEntry bestMatch = this.routeTable.lookup(dstAddr);
+	
+			// If no entry matched, do nothing
+			if (null == bestMatch)
+			{ return; }
+	
+			// Make sure we don't sent a packet back out the interface it came in
+			Iface outIface = bestMatch.getInterface();
+			if (outIface == inIface)
+			{ return; }
+	
+			// Set source MAC address in Ethernet header
+			ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
+	
+			// If no gateway, then nextHop is IP destination
+			int nextHop = bestMatch.getGatewayAddress();
+			if (0 == nextHop)
+			{ nextHop = dstAddr; }
+	
+			// Set destination MAC address in Ethernet header
+			ArpEntry arpEntry = this.arpCache.lookup(nextHop);
+			if (null == arpEntry)
+			{ return; }
+			etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
+
+			IPv4 ip = new IPv4();
+			ip.setTtl((byte)64);
+			ip.setProtocol(IPv4.PROTOCOL_ICMP);
+			ip.setSourceAddress(inIface.getIpAddress());
+			ip.setDestinationAddress(ip_packet.getSourceAddress());
+
+			ICMP icmp = new ICMP();
+			icmp.setIcmpCode((byte)0);
+			icmp.setIcmpType((byte)11);
+
+			Data data = new Data();
+			ether.setPayload(ip);
+			ip.setPayload(icmp);
+			icmp.setPayload(data);
+		}
         
         // Reset checksum now that TTL is decremented
         ipPacket.resetChecksum();
