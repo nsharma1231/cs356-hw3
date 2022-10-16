@@ -182,12 +182,13 @@ public class Router extends Device
 			ether.setPayload(ip);
 			ip.setPayload(icmp);
 			icmp.setPayload(data);
-			
+
 			// send it on the interface that is obtained from the longest prefix match 
 			// in the route table for the source IP of original packet 
 			// (invariably this will be the interface on which the original packet arrived). 
 			// You should drop the original packet after sending the time exceeded message.
 			this.sendPacket(ether, inIface);
+			return;
 		}
         
         // Reset checksum now that TTL is decremented
