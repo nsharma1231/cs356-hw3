@@ -121,14 +121,20 @@ public class Router extends Device
         // Check TTL
         ipPacket.setTtl((byte)(ipPacket.getTtl()-1));
         if (0 == ipPacket.getTtl())
-        { 
+        {
 			Ethernet ether = new Ethernet();
+			// EtherType - set to Ethernet.TYPE_IPv4
 			ether.setEtherType(Ethernet.TYPE_IPv4);
-			// set to the MAC address of the out interface obtained by performing a lookup in the route table
-			// invariably this will be the interface on which the original packet arrived
+			// Source MAC - set to the MAC address of the out interface obtained by performing a
+			// lookup in the route table (invariably this will be the interface on which the original packet arrived)
+			// ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
+			ether.setSourceMACAddress(etherPacket.getDestinationMACAddress());
+			// Destination MAC - set to the MAC address of the next hop, determined by performing a
+			// lookup in the route table followed by a lookup in the ARP cache
+			ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
 
 			IPv4 ip_packet = (IPv4)etherPacket.getPayload();
-			int dstAddr = ip_packet.getSourceAddress();
+			/* int dstAddr = ip_packet.getSourceAddress(); 
 	
 			// Find matching route table entry 
 			RouteEntry bestMatch = this.routeTable.lookup(dstAddr);
@@ -138,18 +144,7 @@ public class Router extends Device
 				System.out.println("best match is null"); 
 				return; 
 			}
-	
-			// Make sure we don't sent a packet back out the interface it came in
-			// Iface outIface = bestMatch.getInterface();
-			// if (outIface == inIface) { 
-			// 	System.out.println("outIface = inIface sending packet to itself");
-			// 	return; 
-			// }
-	
-			// Set source MAC address in Ethernet header
-			ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
-	
-			// If no gateway, then nextHop is IP destination
+			
 			int nextHop = bestMatch.getGatewayAddress();
 			if (0 == nextHop)
 			{ nextHop = dstAddr; }
@@ -159,23 +154,21 @@ public class Router extends Device
 			if (null == arpEntry) {
 				System.out.println("arp entry is null");
 				return;
-			}
-			ether.setDestinationMACAddress(arpEntry.getMac().toBytes());
+			} */
+			// ether.setDestinationMACAddress(arpEntry.getMac().toBytes());
 
 			IPv4 ip = new IPv4();
 			ip.setTtl((byte)64);
 			ip.setProtocol(IPv4.PROTOCOL_ICMP);
+			// Source IP - set to the IP address of the interface on which the original packet arrived
 			ip.setSourceAddress(inIface.getIpAddress());
+			//  set to the source IP of the original packet the ICMP header you must populate the following fields:
 			ip.setDestinationAddress(ip_packet.getSourceAddress());
 
 			ICMP icmp = new ICMP();
 			icmp.setIcmpCode((byte)0);
 			icmp.setIcmpType((byte)11);
-			// Create a byte array and initialize with 0's.
-			// (1) 4 bytes of padding
-			// (2) the original IP header from the packet that triggered the error message
-			// (3) the 8 bytes following the IP header in the original packet.
-			// Then, leave 1st 4 bytes of the array and fill in the other required data as specified in the assignment description.
+			
 			Data data = new Data();
 			byte[] payloadData = new byte[ip_packet.getHeaderLength() + 12]; // ip.length + 12
 			byte[] _payloadData = ip_packet.serialize();
@@ -188,13 +181,10 @@ public class Router extends Device
 			ether.setPayload(ip);
 			ip.setPayload(icmp);
 			icmp.setPayload(data);
-
-			// send it on the interface that is obtained from the longest prefix match 
-			// in the route table for the source IP of original packet 
-			// (invariably this will be the interface on which the original packet arrived). 
-			// You should drop the original packet after sending the time exceeded message.
-
+			
 			this.sendPacket(ether, inIface);
+			System.out.println("icmp src: " + IPv4.fromIPv4Address(ip_packet.getSourceAddress()));
+			System.out.println("icmp dest: " +  IPv4.fromIPv4Address(ip_packet.getDestinationAddress()));
 			System.out.println("sent icmp packet");
 			return;
 		}
