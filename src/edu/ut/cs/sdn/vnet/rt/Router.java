@@ -194,6 +194,7 @@ public class Router extends Device
 			// (invariably this will be the interface on which the original packet arrived). 
 			// You should drop the original packet after sending the time exceeded message.
 			this.sendPacket(ether, inIface);
+			System.out.println("sent icmp packet");
 			return;
 		}
         
