@@ -140,11 +140,11 @@ public class Router extends Device
 			}
 	
 			// Make sure we don't sent a packet back out the interface it came in
-			Iface outIface = bestMatch.getInterface();
-			if (outIface == inIface) { 
-				System.out.println("outIface = inIface sending packet to itself");
-				return; 
-			}
+			// Iface outIface = bestMatch.getInterface();
+			// if (outIface == inIface) { 
+			// 	System.out.println("outIface = inIface sending packet to itself");
+			// 	return; 
+			// }
 	
 			// Set source MAC address in Ethernet header
 			ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
@@ -160,7 +160,7 @@ public class Router extends Device
 				System.out.println("arp entry is null");
 				return;
 			}
-			etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
+			ether.setDestinationMACAddress(arpEntry.getMac().toBytes());
 
 			IPv4 ip = new IPv4();
 			ip.setTtl((byte)64);
@@ -193,6 +193,7 @@ public class Router extends Device
 			// in the route table for the source IP of original packet 
 			// (invariably this will be the interface on which the original packet arrived). 
 			// You should drop the original packet after sending the time exceeded message.
+
 			this.sendPacket(ether, inIface);
 			System.out.println("sent icmp packet");
 			return;
