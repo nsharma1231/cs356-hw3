@@ -109,6 +109,7 @@ public class Router extends Device
 		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
         System.out.println("Handle IP packet");
 
+		System.out.println(etherPacket.toString());
         // Verify checksum
         short origCksum = ipPacket.getChecksum();
         ipPacket.resetChecksum();
@@ -183,8 +184,7 @@ public class Router extends Device
 			icmp.setPayload(data);
 			
 			this.sendPacket(ether, inIface);
-			System.out.println("icmp src: " + IPv4.fromIPv4Address(ip_packet.getSourceAddress()));
-			System.out.println("icmp dest: " +  IPv4.fromIPv4Address(ip_packet.getDestinationAddress()));
+			System.out.println(etherPacket.toString());
 			System.out.println("sent icmp packet");
 			return;
 		}
