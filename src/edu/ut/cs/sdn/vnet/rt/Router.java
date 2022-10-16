@@ -98,6 +98,41 @@ public class Router extends Device
 		
 		/********************************************************************/
 	}
+
+	private void generateICMP(Ethernet etherPacket, Iface inIface, byte type) {
+		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
+		
+		Ethernet ether = new Ethernet();
+		ether.setEtherType(Ethernet.TYPE_IPv4);
+		ether.setSourceMACAddress(etherPacket.getDestinationMACAddress());
+		// TODO: do we need to look up in the arp cache?
+		ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
+
+		IPv4 ip = new IPv4();
+		ip.setTtl((byte) 64);
+		ip.setProtocol(IPv4.PROTOCOL_ICMP);
+		ip.setSourceAddress(inIface.getIpAddress());
+		ip.setDestinationAddress(ipPacket.getSourceAddress());
+
+		ICMP icmp = new ICMP();			
+		icmp.setIcmpType(type);
+		icmp.setIcmpCode((byte) 0);
+		
+		Data data = new Data();
+		byte[] payloadData = new byte[ipPacket.getHeaderLength() * 4 + 12];
+		byte[] _payloadData = ipPacket.serialize();
+		for (int i = 4; i < payloadData.length && (i - 4) < _payloadData.length; i++) {
+			payloadData[i] = _payloadData[i - 4];
+		}
+		
+		data.setData(payloadData);
+
+		ether.setPayload(ip);
+		ip.setPayload(icmp);
+		icmp.setPayload(data);
+		
+		this.sendPacket(ether, inIface);
+	}
 	
 	private void handleIpPacket(Ethernet etherPacket, Iface inIface)
 	{
@@ -109,7 +144,6 @@ public class Router extends Device
 		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
         System.out.println("Handle IP packet");
 
-		System.out.println(etherPacket.toString());
         // Verify checksum
         short origCksum = ipPacket.getChecksum();
         ipPacket.resetChecksum();
@@ -123,38 +157,7 @@ public class Router extends Device
         ipPacket.setTtl((byte)(ipPacket.getTtl()-1));
         if (0 == ipPacket.getTtl())
         {
-			Ethernet ether = new Ethernet();
-			ether.setEtherType(Ethernet.TYPE_IPv4);
-			ether.setSourceMACAddress(etherPacket.getDestinationMACAddress());
-			// TODO: do we need to look up in the arp cache?
-			ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
-
-			IPv4 ip = new IPv4();
-			ip.setTtl((byte) 64);
-			ip.setProtocol(IPv4.PROTOCOL_ICMP);
-			ip.setSourceAddress(inIface.getIpAddress());
-			ip.setDestinationAddress(ipPacket.getSourceAddress());
-
-			ICMP icmp = new ICMP();			
-			icmp.setIcmpType((byte) 11);
-			icmp.setIcmpCode((byte) 0);
-			
-			Data data = new Data();
-			byte[] payloadData = new byte[ipPacket.getHeaderLength() * 4 + 12];
-			byte[] _payloadData = ipPacket.serialize();
-			for (int i = 4; i < payloadData.length && (i - 4) < _payloadData.length; i++) {
-				payloadData[i] = _payloadData[i - 4];
-			}
-			
-			data.setData(payloadData);
-
-			ether.setPayload(ip);
-			ip.setPayload(icmp);
-			icmp.setPayload(data);
-			
-			this.sendPacket(ether, inIface);
-			System.out.println(ether.toString());
-			System.out.println("sent icmp packet");
+			this.generateICMP(etherPacket, inIface, (byte) 11);
 			return;
 		}
         
@@ -187,8 +190,10 @@ public class Router extends Device
         RouteEntry bestMatch = this.routeTable.lookup(dstAddr);
 
         // If no entry matched, do nothing
-        if (null == bestMatch)
-        { return; }
+        if (null == bestMatch) {
+			this.generateICMP(etherPacket, inIface, (byte) 3);
+			return;
+		}
 
         // Make sure we don't sent a packet back out the interface it came in
         Iface outIface = bestMatch.getInterface();
