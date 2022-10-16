@@ -116,7 +116,7 @@ public class Router extends Device
 
 		ICMP icmp = new ICMP();			
 		icmp.setIcmpType(type);
-		icmp.setIcmpCode((byte) 0);
+		icmp.setIcmpCode(code);
 		
 		Data data = new Data();
 		byte[] payloadData = new byte[ipPacket.getHeaderLength() * 4 + 12];
