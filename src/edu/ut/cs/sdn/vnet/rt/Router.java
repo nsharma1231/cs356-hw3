@@ -107,7 +107,7 @@ public class Router extends Device
 		ether.setSourceMACAddress(etherPacket.getDestinationMACAddress());
 		// TODO: do we need to look up in the arp cache?
 		ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
-		
+
 		IPv4 ip = new IPv4();
 		ip.setTtl((byte) 64);
 		ip.setProtocol(IPv4.PROTOCOL_ICMP);
@@ -131,7 +131,7 @@ public class Router extends Device
 		ip.setPayload(icmp);
 		icmp.setPayload(data);
 		
-		this.forwardIpPacket(ether, inIface);
+		this.forwardIpPacket(ether, inIface, true);
 	}
 
 	private void generateEcho() {
@@ -186,10 +186,10 @@ public class Router extends Device
         }
 		
         // Do route lookup and forward
-        this.forwardIpPacket(etherPacket, inIface);
+        this.forwardIpPacket(etherPacket, inIface, false);
 	}
 
-    private void forwardIpPacket(Ethernet etherPacket, Iface inIface)
+    private void forwardIpPacket(Ethernet etherPacket, Iface inIface, boolean icmp)
     {
         // Make sure it's an IP packet
 		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4)
@@ -212,7 +212,7 @@ public class Router extends Device
 
         // Make sure we don't sent a packet back out the interface it came in
         Iface outIface = bestMatch.getInterface();
-        if (outIface == inIface) {
+        if (!icmp && outIface == inIface) {
 			System.out.println("outIface == inIface"); 
 			return; 
 		}
