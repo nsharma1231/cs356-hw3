@@ -131,7 +131,11 @@ public class Router extends Device
 		ip.setPayload(icmp);
 		icmp.setPayload(data);
 		
-		this.sendPacket(ether, inIface);
+		this.forwardIpPacket(ether, inIface);
+	}
+
+	private void generateEcho() {
+		// TODO: implement me
 	}
 	
 	private void handleIpPacket(Ethernet etherPacket, Iface inIface)
@@ -167,8 +171,18 @@ public class Router extends Device
         // Check if packet is destined for one of router's interfaces
         for (Iface iface : this.interfaces.values())
         {
-        	if (ipPacket.getDestinationAddress() == iface.getIpAddress())
-        	{ return; }
+        	if (ipPacket.getDestinationAddress() == iface.getIpAddress()) { 
+				if (ipPacket.getProtocol() == IPv4.PROTOCOL_UDP || ipPacket.getProtocol() == IPv4.PROTOCOL_TCP) {
+					this.generateICMP(etherPacket, inIface, (byte) 3, (byte) 3);
+				}
+				else if (ipPacket.getProtocol() == IPv4.PROTOCOL_ICMP) {
+					ICMP payload = (ICMP) ipPacket.getPayload();
+					if (payload.getIcmpType() == ICMP.TYPE_ECHO_REQUEST) {
+						this.generateEcho();
+					}
+				}
+				return; 
+			}
         }
 		
         // Do route lookup and forward
