@@ -107,7 +107,7 @@ public class Router extends Device
 		ether.setSourceMACAddress(etherPacket.getDestinationMACAddress());
 		// TODO: do we need to look up in the arp cache?
 		ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
-
+		
 		IPv4 ip = new IPv4();
 		ip.setTtl((byte) 64);
 		ip.setProtocol(IPv4.PROTOCOL_ICMP);
@@ -206,13 +206,16 @@ public class Router extends Device
         // If no entry matched, do nothing
         if (null == bestMatch) {
 			this.generateICMP(etherPacket, inIface, (byte) 3, (byte) 0);
+			System.out.println("no entry matched");
 			return;
 		}
 
         // Make sure we don't sent a packet back out the interface it came in
         Iface outIface = bestMatch.getInterface();
-        if (outIface == inIface)
-        { return; }
+        if (outIface == inIface) {
+			System.out.println("outIface == inIface"); 
+			return; 
+		}
 
         // Set source MAC address in Ethernet header
         etherPacket.setSourceMACAddress(outIface.getMacAddress().toBytes());
@@ -220,11 +223,15 @@ public class Router extends Device
         // If no gateway, then nextHop is IP destination
         int nextHop = bestMatch.getGatewayAddress();
         if (0 == nextHop)
-        { nextHop = dstAddr; }
+        {
+			System.out.println("0 == nextHop");
+			nextHop = dstAddr;
+		}
 
         // Set destination MAC address in Ethernet header
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (null == arpEntry) {
+			System.out.println("arpEntry null");
 			this.generateICMP(etherPacket, inIface, (byte) 3, (byte) 1);
 			return; 
 		}
