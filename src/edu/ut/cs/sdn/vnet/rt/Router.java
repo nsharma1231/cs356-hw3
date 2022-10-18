@@ -161,13 +161,16 @@ public class Router extends Device
         icmp.setIcmpCode(code);
 
         Data data = new Data();
-        byte[] payloadData = new byte[ipPacket.getHeaderLength() * 4 + 12];
-        byte[] _payloadData = ipPacket.serialize();
-        for (int i = 4; i < payloadData.length && (i - 4) < _payloadData.length; i++) {
-            payloadData[i] = _payloadData[i - 4];
-        }
-
-        data.setData(payloadData);
+		if (code == 0 && type == 0) {
+			data.setPayload(icmp.getPayload());
+		} else {
+			byte[] payloadData = new byte[ipPacket.getHeaderLength() * 4 + 12];
+			byte[] _payloadData = ipPacket.serialize();
+			for (int i = 4; i < payloadData.length && (i - 4) < _payloadData.length; i++) {
+				payloadData[i] = _payloadData[i - 4];
+			}
+			data.setData(payloadData);
+		}
 
         ether.setPayload(ip);
         ip.setPayload(icmp);
