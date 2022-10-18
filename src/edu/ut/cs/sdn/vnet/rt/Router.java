@@ -133,7 +133,7 @@ public class Router extends Device
 		
 		this.forwardIpPacket(ether, inIface, true);
 	}
-	
+
 	private void handleIpPacket(Ethernet etherPacket, Iface inIface)
 	{
 		// Make sure it's an IP packet
@@ -175,6 +175,7 @@ public class Router extends Device
 					ICMP payload = (ICMP) ipPacket.getPayload();
 					if (payload.getIcmpType() == ICMP.TYPE_ECHO_REQUEST) {
 						ipPacket.setSourceAddress(ipPacket.getDestinationAddress());
+						etherPacket.setPayload(ipPacket);
 						this.generateICMP(etherPacket, inIface, (byte) 0, (byte) 0);
 					}
 				}
