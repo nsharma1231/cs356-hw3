@@ -130,7 +130,9 @@ public class Router extends Device
 			arpHeader.setSenderProtocolAddress(inIface.getIpAddress());
 			arpHeader.setTargetHardwareAddress(arpPacket.getSenderHardwareAddress());
 			arpHeader.setTargetProtocolAddress(arpPacket.getSenderProtocolAddress());
-
+			
+			ether.setPayload(arpHeader);
+			
 			this.sendPacket(ether, inIface);
 			
 			return;
