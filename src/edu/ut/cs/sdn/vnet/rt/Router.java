@@ -163,7 +163,8 @@ public class Router extends Device
         Data data = new Data();
 		if (code == 0 && type == 0) {
 			System.out.println("code == type == 0");
-			data.setPayload(ipPacket.getPayload().getPayload());
+			byte[] payloadData = ipPacket.getPayload().getPayload().serialize();
+			data.setData(payloadData);
 		} else {
 			byte[] payloadData = new byte[ipPacket.getHeaderLength() * 4 + 12];
 			byte[] _payloadData = ipPacket.serialize();
