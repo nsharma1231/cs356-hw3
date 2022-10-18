@@ -1,5 +1,7 @@
 package edu.ut.cs.sdn.vnet.rt;
 
+import java.nio.ByteBuffer;
+
 import edu.ut.cs.sdn.vnet.Device;
 import edu.ut.cs.sdn.vnet.DumpFile;
 import edu.ut.cs.sdn.vnet.Iface;
@@ -7,6 +9,7 @@ import edu.ut.cs.sdn.vnet.Iface;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.ICMP;
+import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Data;
 
 /**
@@ -93,10 +96,47 @@ public class Router extends Device
 		case Ethernet.TYPE_IPv4:
 			this.handleIpPacket(etherPacket, inIface);
 			break;
+		case Ethernet.TYPE_ARP:
+			this.handleArpPacket(etherPacket, inIface);
+			break;
+		default:
+			break;
 		// Ignore all other packet types, for now
 		}
 		
 		/********************************************************************/
+	}
+
+	private void handleArpPacket(Ethernet etherPacket, Iface inIface) {
+		ARP arpPacket = (ARP) etherPacket.getPayload();
+
+		if (arpPacket.getOpCode() == ARP.OP_REQUEST) {
+			int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
+			int ourIp = inIface.getIpAddress();
+			if (targetIp != ourIp) return;
+			
+			Ethernet ether = new Ethernet();
+			ether.setEtherType(Ethernet.TYPE_ARP);
+			ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
+			ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
+
+			ARP arpHeader = new ARP();
+			arpHeader.setHardwareType(ARP.HW_TYPE_ETHERNET);
+			arpHeader.setProtocolType(ARP.PROTO_TYPE_IP);
+			arpHeader.setHardwareAddressLength((byte) Ethernet.DATALAYER_ADDRESS_LENGTH);
+			arpHeader.setProtocolAddressLength((byte) 4);
+			arpHeader.setOpCode(ARP.OP_REPLY);
+			arpHeader.setSenderHardwareAddress(inIface.getMacAddress().toBytes());
+			arpHeader.setSenderProtocolAddress(inIface.getIpAddress());
+			arpHeader.setTargetHardwareAddress(arpPacket.getSenderHardwareAddress());
+			arpHeader.setTargetProtocolAddress(arpPacket.getSenderProtocolAddress());
+
+			this.sendPacket(ether, inIface);
+			
+			return;
+		}
+
+
 	}
 
 	private void generateICMP(Ethernet etherPacket, Iface inIface, byte type, byte code) {
