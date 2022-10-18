@@ -221,8 +221,8 @@ public class Router extends Device
                 else if (ipPacket.getProtocol() == IPv4.PROTOCOL_ICMP) {
                     ICMP payload = (ICMP) ipPacket.getPayload();
                     if (payload.getIcmpType() == ICMP.TYPE_ECHO_REQUEST) {
-                        ipPacket.setSourceAddress(ipPacket.getDestinationAddress());
-                        etherPacket.setPayload(ipPacket);
+                        // ipPacket.setSourceAddress(ipPacket.getDestinationAddress());
+                        // etherPacket.setPayload(ipPacket);
                         this.generateICMP(etherPacket, inIface, (byte) 0, (byte) 0);
                     }
                 }
