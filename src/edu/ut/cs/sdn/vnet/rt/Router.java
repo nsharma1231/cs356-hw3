@@ -162,6 +162,7 @@ public class Router extends Device
 
         Data data = new Data();
 		if (code == 0 && type == 0) {
+			System.out.println("code == type == 0");
 			data.setPayload(ipPacket.getPayload().getPayload());
 		} else {
 			byte[] payloadData = new byte[ipPacket.getHeaderLength() * 4 + 12];
@@ -175,7 +176,9 @@ public class Router extends Device
         ether.setPayload(ip);
         ip.setPayload(icmp);
         icmp.setPayload(data);
-
+		System.out.println(ip == null);
+		System.out.println(icmp == null);
+		System.out.println(data == null);
         this.forwardIpPacket(ether, inIface, true);
     }
 
