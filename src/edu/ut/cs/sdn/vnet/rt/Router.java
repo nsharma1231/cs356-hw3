@@ -256,6 +256,7 @@ public class Router extends Device
             // Your router must only respond to ARP requests whose 
             // target IP protocol address equals the IP address of the interface on which the ARP request was received
             if (targetIp != ourIp) {
+                System.out.print(IPv4.fromIPv4Address(targetIPAddress) + " ");
                 System.out.println("[DEBUG] target IP == ourIP");
                 return;
             }
