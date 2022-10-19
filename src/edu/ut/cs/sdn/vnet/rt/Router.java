@@ -110,13 +110,15 @@ public class Router extends Device
 
         /********************************************************************/
         /* TODO: Handle packets                                             */
-
+        System.out.print("[DEBUG] packet type: ");
         switch(etherPacket.getEtherType())
         {
         case Ethernet.TYPE_IPv4:
+            System.out.println("IP???");
             this.handleIpPacket(etherPacket, inIface);
             break;
         case Ethernet.TYPE_ARP:
+            System.out.println("ARP???");
             this.handleArpPacket(etherPacket, inIface);
             break;
         default:
