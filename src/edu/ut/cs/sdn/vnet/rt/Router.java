@@ -1,12 +1,14 @@
 package edu.ut.cs.sdn.vnet.rt;
 
 import java.nio.ByteBuffer;
-
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
+import java.util.TimerTask;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -17,6 +19,8 @@ import edu.ut.cs.sdn.vnet.Iface;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.MACAddress;
+import net.floodlightcontroller.packet.RIPv2;
+import net.floodlightcontroller.packet.RIPv2Entry;
 import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.BasePacket;
@@ -34,6 +38,7 @@ public class Router extends Device
 
     /** Routing table for the router */
     private final RouteTable routeTable;
+    private final RIPv2 ripv2;
 
     /** ARP cache for the router */
     private final ArpCache arpCache;
@@ -59,6 +64,7 @@ public class Router extends Device
         this.arpCache = new ArpCache();
         this.waitingQ = new HashMap<>();
         this.lock = new ReentrantLock();
+        this.ripv2 = new RIPv2();
     }
 
     /**
@@ -78,7 +84,7 @@ public class Router extends Device
             System.err.println("Error setting up routing table from file "
                     + routeTableFile);
             System.exit(1);
-        }
+        } 
 
         System.out.println("Loaded static route table");
         System.out.println("-------------------------------------------------");
@@ -98,9 +104,20 @@ public class Router extends Device
                                    0,                       // gwIp
                                    iface.getSubnetMask(),   // maskIp
                                    iface);                  // iface
+            
+            this.ripv2.addEntry(new RIPv2Entry(iface.getIpAddress(), iface.getSubnetMask(), 0));
         }
+
+        TimerTask task = new TimerTask() {
+            public void run() {
+                RIPv2 ripPacket = new RIPv2();
+                
+                sendPacket(null, null)
+            }
+        };
     }
 
+    // WHAT IS PASSED IN???
     public void distanceVec() {
         /*
          * (1) Distance d1 on its own route table entry corresponding to the nextHopAddress
@@ -108,6 +125,7 @@ public class Router extends Device
          * (3) Distance d3 on its own route table entry corresponding to address (current path to address)
          * (4) It will updates its own route table for address if d1 + d2 <= d3, and sets new time and new distance , and gateway as the nextHopAddress
          */
+        
     }
 
     /**
