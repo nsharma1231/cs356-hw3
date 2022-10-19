@@ -85,6 +85,7 @@ public class Main
 		
 		if (dev instanceof Router) 
 		{
+			System.out.println("routeTableFile = " + routeTableFile);
 			// Read static route table
 			if (routeTableFile != null)
 			{ ((Router)dev).loadRouteTable(routeTableFile); }
