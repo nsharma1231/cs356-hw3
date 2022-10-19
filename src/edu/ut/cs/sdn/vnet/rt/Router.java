@@ -117,6 +117,7 @@ public class Router extends Device
             udp.setPayload(ripv2);
             ip.setPayload(udp);
             ether.setPayload(ip);
+            System.out.println("sending out rip packets");
             forwardIpPacket(ether, iface, false);
         }
     }
