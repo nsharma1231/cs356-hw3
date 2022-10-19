@@ -86,6 +86,30 @@ public class Router extends Device
         System.out.println("-------------------------------------------------");
     }
 
+    public void runRIP()
+    {
+        for (Iface iface : this.interfaces.values()) {
+            /*
+             *  (1) Add entries to the route table for the subnets that are directly reachable via the router's interfaces 
+             *  (2) Based on the IP address and netmask associated with each of the router's interfaces. 
+             *  (3) These entries should have no gateway.
+             */
+            this.routeTable.insert(iface.getIpAddress(),    // dstIp
+                                   0,                       // gwIp
+                                   iface.getSubnetMask(),   // maskIp
+                                   iface);                  // iface
+        }
+    }
+
+    public void distanceVec() {
+        /*
+         * (1) Distance d1 on its own route table entry corresponding to the nextHopAddress
+         * (2) Distance d2 as the metric value on the RIP entry, that says address is d2 hops away from nextHopAddress
+         * (3) Distance d3 on its own route table entry corresponding to address (current path to address)
+         * (4) It will updates its own route table for address if d1 + d2 <= d3, and sets new time and new distance , and gateway as the nextHopAddress
+         */
+    }
+
     /**
      * Load a new ARP cache from a file.
      * @param arpCacheFile the name of the file containing the ARP cache
