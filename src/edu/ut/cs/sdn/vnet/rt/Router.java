@@ -386,7 +386,7 @@ public class Router extends Device
         // Set destination MAC address in Ethernet header
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (arpEntry == null) {
-            System.out.println("adding " + IPv4.fromIPv4Address(nextHop) + " to waiting");
+            System.out.println("adding" + IPv4.fromIPv4Address(nextHop) + " " + etherPacket + " to waiting");
             lock.lock();
             try {
                 if (waitingQ.get(nextHop) == null) {
