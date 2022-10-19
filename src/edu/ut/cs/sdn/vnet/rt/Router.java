@@ -172,7 +172,7 @@ public class Router extends Device
                 // check if we got a reply
                 if (attempt()) {
                     MACAddress destMac = arpCache.lookup(targetIPAddress).getMac();
-
+                    System.out.println("Got reply");
                     // send all packets
                     lock.lock();
                     try {
@@ -247,6 +247,7 @@ public class Router extends Device
                 this.generateARP(etherPacket, inIface, ARP.OP_REPLY, 0);
                 break;
             case ARP.OP_REPLY:
+                System.out.print("received an arp reply");
                 MACAddress macAddress = new MACAddress(arpPacket.getSenderHardwareAddress());
                 int ip = IPv4.toIPv4Address(arpPacket.getSenderProtocolAddress());
                 this.arpCache.insert(macAddress, ip);
@@ -361,14 +362,12 @@ public class Router extends Device
         // If no entry matched, do nothing
         if (bestMatch == null) {
             this.generateICMP(etherPacket, inIface, (byte) 3, (byte) 0);
-            System.out.println("no entry matched");
             return;
         }
 
         // Make sure we don't sent a packet back out the interface it came in
         Iface outIface = bestMatch.getInterface();
         if (!icmp && outIface == inIface) {
-            System.out.println("outIface == inIface");
             return;
         }
 
@@ -385,6 +384,7 @@ public class Router extends Device
         // Set destination MAC address in Ethernet header
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (arpEntry == null) {
+            System.out.println("adding to waiting");
             lock.lock();
             try {
                 if (waitingQ.get(nextHop) == null) {
