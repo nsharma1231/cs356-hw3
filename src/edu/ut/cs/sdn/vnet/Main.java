@@ -85,6 +85,10 @@ public class Main
 		
 		if (dev instanceof Router) 
 		{
+			// Read static ACP cache
+			if (arpCacheFile != null)
+			{ ((Router)dev).loadArpCache(arpCacheFile); }
+
 			System.out.println("routeTableFile = " + routeTableFile);
 			// Read static route table
 			if (routeTableFile != null)
@@ -92,10 +96,6 @@ public class Main
 			// or run RIPv2 protocol
 			else
 			{ ((Router)dev).runRIP(); }
-			
-			// Read static ACP cache
-			if (arpCacheFile != null)
-			{ ((Router)dev).loadArpCache(arpCacheFile); }
 		}
 
 		// Read messages from the server until the server closes the connection
