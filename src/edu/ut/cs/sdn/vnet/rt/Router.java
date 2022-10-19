@@ -155,10 +155,6 @@ public class Router extends Device
         private boolean attempt() throws InterruptedException {
             sendRequest();
             Thread.sleep(RETRY_TIME);
-            // long start = System.currentTimeMillis();
-            // long end = start + RETRY_TIME;
-            // spin for a second
-            
 
             // check if a reply has been received
             return cacheUpdated();
@@ -171,7 +167,7 @@ public class Router extends Device
                 try {
                     if (attempt()) {
                         MACAddress destMac = arpCache.lookup(targetIPAddress).getMac();
-                        System.out.println("Got reply");
+                        System.out.printf("ATTEMPT %d for %s SUCCEEDED\n", i, IPv4.fromIPv4Address(this.targetIPAddress));
                         // send all packets
                         lock.lock();
                         try {
@@ -189,10 +185,9 @@ public class Router extends Device
 
                         return;
                     } else {
-                        System.out.println("no reply");
+                        System.out.printf("ATTEMPT %d for %s FAILED\n", i, IPv4.fromIPv4Address(this.targetIPAddress));
                     }
                 } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             }
@@ -391,9 +386,6 @@ public class Router extends Device
         // Set destination MAC address in Ethernet header
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (arpEntry == null) {
-            // System.out.println("adding " + IPv4.fromIPv4Address(nextHop) + " " + etherPacket + " to waiting");
-            Exception e = new Exception();
-            e.printStackTrace();
             lock.lock();
             try {
                 if (waitingQ.get(nextHop) == null) {
