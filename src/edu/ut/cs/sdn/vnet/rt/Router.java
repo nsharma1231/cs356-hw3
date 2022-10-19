@@ -28,9 +28,9 @@ import net.floodlightcontroller.packet.Data;
 public class Router extends Device
 {	
     public static final byte XFF = (byte) 0xFF;
-    public static final byte[] BROADCAST = new byte[]{XFF, XFF, XFF, XFF};
+    public static final byte[] BROADCAST = new byte[]{XFF, XFF, XFF, XFF, XFF, XFF};
     public static final byte ZRO = (byte) 0x00;
-    public static final byte[] ZERO = new byte[]{ZRO, ZRO, ZRO, ZRO};
+    public static final byte[] ZERO = new byte[]{ZRO, ZRO, ZRO, ZRO, ZRO, ZRO};
 
     /** Routing table for the router */
     private final RouteTable routeTable;
@@ -379,7 +379,6 @@ public class Router extends Device
         int nextHop = bestMatch.getGatewayAddress();
         if (nextHop == 0)
         {
-            System.out.println("0 == nextHop");
             nextHop = dstAddr;
         }
 
