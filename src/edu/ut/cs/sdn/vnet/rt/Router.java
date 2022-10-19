@@ -285,8 +285,7 @@ public class Router extends Device
         
         if (opCode == ARP.OP_REQUEST) {
             for (Iface iface : this.interfaces.values()) {
-                if (iface != inIface)
-                    this.sendPacket(ether, iface);
+                this.sendPacket(ether, iface);
             }
         }
         else {
