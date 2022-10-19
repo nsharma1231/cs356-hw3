@@ -489,6 +489,7 @@ public class Router extends Device
         assert etherPacket.getEtherType() == Ethernet.TYPE_IPv4;
     
         IPv4 ipPacket = (IPv4) etherPacket.getPayload();
+        LOG("ip address = " + IPv4.fromIPv4Address(ipPacket.getDestinationAddress()));
         if (ipPacket.getDestinationAddress() != IPv4.toIPv4Address("224.0.0.9"))
             return false;
         if (ipPacket.getProtocol() != IPv4.PROTOCOL_UDP)
