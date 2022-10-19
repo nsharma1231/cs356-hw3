@@ -180,6 +180,7 @@ public class Router extends Device
                         for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
                             Ethernet ether = (Ethernet) packet;
                             ether.setDestinationMACAddress(destMac.toBytes());
+                            System.out.println("sending packet: " + ether);
                             sendPacket(ether, outIface);
                         }
                         waitingQ.remove(targetIPAddress);
@@ -247,7 +248,7 @@ public class Router extends Device
                 this.generateARP(etherPacket, inIface, ARP.OP_REPLY, 0);
                 break;
             case ARP.OP_REPLY:
-                System.out.print("received an arp reply");
+                System.out.println("received an arp reply");
                 MACAddress macAddress = new MACAddress(arpPacket.getSenderHardwareAddress());
                 int ip = IPv4.toIPv4Address(arpPacket.getSenderProtocolAddress());
                 this.arpCache.insert(macAddress, ip);
