@@ -490,6 +490,9 @@ public class Router extends Device
     
         IPv4 ipPacket = (IPv4) etherPacket.getPayload();
         LOG("ip address = " + IPv4.fromIPv4Address(ipPacket.getDestinationAddress()));
+        LOG("ipPacket.getProtocol() = " + ipPacket.getProtocol());
+        LOG("IPv4.PROTOCOL_UDP = " + IPv4.PROTOCOL_UDP);
+
         if (ipPacket.getDestinationAddress() != IPv4.toIPv4Address("224.0.0.9"))
             return false;
         if (ipPacket.getProtocol() != IPv4.PROTOCOL_UDP)
