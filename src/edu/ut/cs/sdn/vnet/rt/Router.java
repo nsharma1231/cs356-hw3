@@ -98,6 +98,7 @@ public class Router extends Device
     }
 
     public void broadcastRIP() {
+        System.out.println("broadcast Rip is called");
         for (Iface iface : this.interfaces.values()) {
             Ethernet ether = new Ethernet();
             ether.setEtherType(Ethernet.TYPE_IPv4);
@@ -124,6 +125,7 @@ public class Router extends Device
 
     public void runRIP()
     {
+        System.out.println("run rip is called");
         for (Iface iface : this.interfaces.values()) {
             /*
              *  (1) Add entries to the route table for the subnets that are directly reachable via the router's interfaces 
