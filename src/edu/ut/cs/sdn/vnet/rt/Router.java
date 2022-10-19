@@ -110,6 +110,8 @@ public class Router extends Device
 
         /********************************************************************/
         /* TODO: Handle packets                                             */
+        Exception e = new Exception();
+        e.getStackTrace();
         System.out.print("[DEBUG] packet type: ");
         switch(etherPacket.getEtherType())
         {
@@ -283,11 +285,12 @@ public class Router extends Device
         
         if (opCode == ARP.OP_REQUEST) {
             for (Iface iface : this.interfaces.values()) {
-                this.sendPacket(etherPacket, iface);
+                if (iface != inIface)
+                    this.sendPacket(ether, iface);
             }
         }
         else {
-            this.sendPacket(etherPacket, inIface);
+            this.sendPacket(ether, inIface);
         }
     }
 
