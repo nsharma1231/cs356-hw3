@@ -245,10 +245,11 @@ public class Router extends Device
 
         switch (arpPacket.getOpCode()) {
             case ARP.OP_REQUEST:
+                System.out.println("received an ARP REQUEST: " + etherPacket);
                 this.generateARP(etherPacket, inIface, ARP.OP_REPLY, 0);
                 break;
             case ARP.OP_REPLY:
-                System.out.println("received an arp reply");
+                System.out.println("received an ARP REPLY: " + etherPacket);
                 MACAddress macAddress = new MACAddress(arpPacket.getSenderHardwareAddress());
                 int ip = IPv4.toIPv4Address(arpPacket.getSenderProtocolAddress());
                 this.arpCache.insert(macAddress, ip);
@@ -385,7 +386,7 @@ public class Router extends Device
         // Set destination MAC address in Ethernet header
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (arpEntry == null) {
-            System.out.println("adding to waiting");
+            System.out.println("adding " + IPv4.fromIPv4Address(nextHop) + " to waiting");
             lock.lock();
             try {
                 if (waitingQ.get(nextHop) == null) {
