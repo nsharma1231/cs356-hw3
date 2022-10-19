@@ -248,16 +248,14 @@ public class Router extends Device
     private void generateARP(Ethernet etherPacket, Iface inIface, short opCode, int targetIPAddress)
     {
         ARP arpPacket = null;
+        
+        System.out.println("[DEBUG] target IP: " + IPv4.fromIPv4Address(targetIPAddress));
+        System.out.println("[DEGUG] opCode == ARP.OP_REPLY := " + (opCode == ARP.OP_REPLY));
         if (opCode == ARP.OP_REPLY) {
             arpPacket = (ARP) etherPacket.getPayload();
-
             int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
             int ourIp = inIface.getIpAddress();
-            // Your router must only respond to ARP requests whose 
-            // target IP protocol address equals the IP address of the interface on which the ARP request was received
             if (targetIp != ourIp) {
-                System.out.print(IPv4.fromIPv4Address(targetIPAddress) + " ");
-                System.out.println("[DEBUG] target IP == ourIP");
                 return;
             }
         }
@@ -265,7 +263,7 @@ public class Router extends Device
         Ethernet ether = new Ethernet();
         ether.setEtherType(Ethernet.TYPE_ARP);
         ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
-        ether.setDestinationMACAddress(opCode == ARP.OP_REPLY ? etherPacket.getSourceMACAddress() : BROADCAST);
+        ether.setDestinationMACAddress(opCode == ARP.OP_REPLY ? etherPacket.getSourceMACAddress() : Router.BROADCAST);
 
         ARP arpHeader = new ARP();
         arpHeader.setHardwareType(ARP.HW_TYPE_ETHERNET);
@@ -275,13 +273,20 @@ public class Router extends Device
         arpHeader.setOpCode(opCode);
         arpHeader.setSenderHardwareAddress(inIface.getMacAddress().toBytes());
         arpHeader.setSenderProtocolAddress(inIface.getIpAddress());
-        arpHeader.setTargetHardwareAddress(opCode == ARP.OP_REPLY ? arpPacket.getSenderHardwareAddress() : ZERO);
+        arpHeader.setTargetHardwareAddress(opCode == ARP.OP_REPLY ? arpPacket.getSenderHardwareAddress() : Router.ZERO);
         arpHeader.setTargetProtocolAddress(opCode == ARP.OP_REPLY ? arpPacket.getSenderProtocolAddress() :
                                                                     IPv4.toIPv4AddressBytes(targetIPAddress));
 
         ether.setPayload(arpHeader);
-
-        this.sendPacket(ether, inIface);
+        
+        if (opCode == ARP.OP_REQUEST) {
+            for (Iface iface : this.interfaces.values()) {
+                this.sendPacket(etherPacket, iface);
+            }
+        }
+        else {
+            this.sendPacket(etherPacket, inIface);
+        }
     }
 
     private void forwardIpPacket(Ethernet etherPacket, Iface inIface, boolean icmp)
