@@ -152,15 +152,13 @@ public class Router extends Device
             return arpEntry != null;
         }
 
-        private boolean attempt() {
-            long start = System.currentTimeMillis();
-            long end = start + RETRY_TIME;
-
+        private boolean attempt() throws InterruptedException {
             sendRequest();
-
+            Thread.sleep(RETRY_TIME);
+            // long start = System.currentTimeMillis();
+            // long end = start + RETRY_TIME;
             // spin for a second
-            while (System.currentTimeMillis() < end)
-                ;
+            
 
             // check if a reply has been received
             return cacheUpdated();
@@ -170,27 +168,32 @@ public class Router extends Device
             for (int i = 0; i < NUM_RETRIES; ++i) {
 
                 // check if we got a reply
-                if (attempt()) {
-                    MACAddress destMac = arpCache.lookup(targetIPAddress).getMac();
-                    System.out.println("Got reply");
-                    // send all packets
-                    lock.lock();
-                    try {
-                        assert waitingQ.get(this.targetIPAddress) != null;
-                        for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
-                            Ethernet ether = (Ethernet) packet;
-                            ether.setDestinationMACAddress(destMac.toBytes());
-                            System.out.println("sending packet: " + ether);
-                            sendPacket(ether, outIface);
+                try {
+                    if (attempt()) {
+                        MACAddress destMac = arpCache.lookup(targetIPAddress).getMac();
+                        System.out.println("Got reply");
+                        // send all packets
+                        lock.lock();
+                        try {
+                            assert waitingQ.get(this.targetIPAddress) != null;
+                            for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
+                                Ethernet ether = (Ethernet) packet;
+                                ether.setDestinationMACAddress(destMac.toBytes());
+                                System.out.println("sending packet: " + ether);
+                                sendPacket(ether, outIface);
+                            }
+                            waitingQ.remove(targetIPAddress);
+                        } finally {
+                            lock.unlock();
                         }
-                        waitingQ.remove(targetIPAddress);
-                    } finally {
-                        lock.unlock();
-                    }
 
-                    return;
-                } else {
-                    System.out.println("no reply");
+                        return;
+                    } else {
+                        System.out.println("no reply");
+                    }
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
                 }
             }
             
