@@ -208,11 +208,14 @@ public class Router extends Device
 
     private void generateARP(Ethernet etherPacket, Iface inIface, short opCode, int targetIPAddress)
     {
-        ARP arpPacket = (ARP) etherPacket.getPayload();
+        ARP arpPacket = null;
+        if (opCode == ARP.OP_REPLY) {
+            arpPacket = (ARP) etherPacket.getPayload();
 
-        int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
-        int ourIp = inIface.getIpAddress();
-        if (targetIp != ourIp) return;
+            int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
+            int ourIp = inIface.getIpAddress();
+            if (targetIp != ourIp) return;
+        }
 
         Ethernet ether = new Ethernet();
         ether.setEtherType(Ethernet.TYPE_ARP);
