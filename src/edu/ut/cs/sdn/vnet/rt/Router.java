@@ -149,17 +149,17 @@ public class Router extends Device
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(broadcastTask, System.currentTimeMillis(), UNSOLICITED_WAIT);
         
-        TimerTask dropTask = new TimerTask() {
-             public void run() {
-                LOG("drop ?");
-             }
-        };
-        try {
-            dropTask.wait(CHECK_ROUTE_ENTRY_WAIT);
-            dropTask.run();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        // TimerTask dropTask = new TimerTask() {
+        //      public void run() {
+        //         LOG("drop ?");
+        //      }
+        // };
+        // try {
+        //     dropTask.wait(CHECK_ROUTE_ENTRY_WAIT);
+        //     dropTask.run();
+        // } catch (InterruptedException e) {
+        //     e.printStackTrace();
+        // }
         
     }
 
