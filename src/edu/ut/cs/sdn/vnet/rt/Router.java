@@ -41,6 +41,13 @@ public class Router extends Device
     private Map<Integer, Queue<BasePacket>> waitingQ;
     private Lock lock;
 
+    public static final boolean VERBOSE = true;
+    private void LOG(String message)
+    {
+        if (VERBOSE)
+            System.err.println(message);
+    }
+
     /**
      * Creates a router for a specific host.
      * @param host hostname for the router
@@ -110,17 +117,13 @@ public class Router extends Device
 
         /********************************************************************/
         /* TODO: Handle packets                                             */
-        Exception e = new Exception();
-        e.getStackTrace();
-        System.out.print("[DEBUG] packet type: ");
+
         switch(etherPacket.getEtherType())
         {
         case Ethernet.TYPE_IPv4:
-            System.out.println("IP???");
             this.handleIpPacket(etherPacket, inIface);
             break;
         case Ethernet.TYPE_ARP:
-            System.out.println("ARP???");
             this.handleArpPacket(etherPacket, inIface);
             break;
         default:
@@ -138,15 +141,17 @@ public class Router extends Device
      */
     private void handleArpPacket(Ethernet etherPacket, Iface inIface)
     {
+        assert etherPacket.getEtherType() == Ethernet.TYPE_ARP;
+
+        LOG("[INFO] Handle ARP packet");
+
         ARP arpPacket = (ARP) etherPacket.getPayload();
 
         switch (arpPacket.getOpCode()) {
             case ARP.OP_REQUEST:
-                System.out.println("received an ARP REQUEST: " + etherPacket);
                 this.generateARP(etherPacket, inIface, ARP.OP_REPLY, 0);
                 break;
             case ARP.OP_REPLY:
-                System.out.println("received an ARP REPLY: " + etherPacket);
                 MACAddress macAddress = new MACAddress(arpPacket.getSenderHardwareAddress());
                 int ip = IPv4.toIPv4Address(arpPacket.getSenderProtocolAddress());
                 this.arpCache.insert(macAddress, ip);
@@ -166,11 +171,12 @@ public class Router extends Device
     private void handleIpPacket(Ethernet etherPacket, Iface inIface)
     {
         // Make sure it's an IP packet
-        if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) return;
+        assert etherPacket.getEtherType() == Ethernet.TYPE_IPv4;
+
+        LOG("[INFO] Handle IP packet");
 
         // Get IP header
         IPv4 ipPacket = (IPv4)etherPacket.getPayload();
-        System.out.println("Handle IP packet");
 
         // Verify checksum
         short origCksum = ipPacket.getChecksum();
@@ -212,7 +218,8 @@ public class Router extends Device
         this.forwardIpPacket(etherPacket, inIface, false);
     }
     
-    private void generateICMP(Ethernet etherPacket, Iface inIface, byte type, byte code) {
+    private void generateICMP(Ethernet etherPacket, Iface inIface, byte type, byte code)
+    {
         IPv4 ipPacket = (IPv4)etherPacket.getPayload();
 
         Ethernet ether = new Ethernet();
@@ -253,8 +260,6 @@ public class Router extends Device
     {
         ARP arpPacket = null;
         
-        System.out.println("[DEBUG] target IP: " + IPv4.fromIPv4Address(targetIPAddress));
-        System.out.println("[DEGUG] opCode == ARP.OP_REPLY := " + (opCode == ARP.OP_REPLY));
         if (opCode == ARP.OP_REPLY) {
             arpPacket = (ARP) etherPacket.getPayload();
             int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
@@ -296,8 +301,8 @@ public class Router extends Device
     private void forwardIpPacket(Ethernet etherPacket, Iface inIface, boolean icmp)
     {
         // Make sure it's an IP packet
-        if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) return;
-        System.out.println("Forward IP packet");
+        assert etherPacket.getEtherType() == Ethernet.TYPE_IPv4;
+        LOG("[INFO] Forward IP packet");
 
         // Get IP header
         IPv4 ipPacket = (IPv4)etherPacket.getPayload();
@@ -350,7 +355,8 @@ public class Router extends Device
         this.sendPacket(etherPacket, outIface);
     }
 
-    class ARPRequest extends Thread {
+    class ARPRequest extends Thread
+    {
         public static final long RETRY_TIME = 1 * 1000L;
         public static final int NUM_RETRIES = 3;
         
@@ -359,23 +365,27 @@ public class Router extends Device
         private Iface outIface;
         private int targetIPAddress;
 
-        public ARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int targetIPAddress) {
+        public ARPRequest(Ethernet etherPacket, Iface inIface, Iface outIface, int targetIPAddress)
+        {
             this.etherPacket = etherPacket;
             this.inIface = inIface;
             this.outIface = outIface;
             this.targetIPAddress = targetIPAddress;
         }
 
-        private void sendRequest() {
+        private void sendRequest()
+        {
             generateARP(etherPacket, inIface, ARP.OP_REQUEST, this.targetIPAddress);
         }
 
-        private boolean cacheUpdated() {
+        private boolean cacheUpdated()
+        {
             ArpEntry arpEntry = arpCache.lookup(this.targetIPAddress);
             return arpEntry != null;
         }
 
-        private boolean attempt() {
+        private boolean attempt()
+        {
             sendRequest();
 
             // wait for one second
@@ -389,13 +399,13 @@ public class Router extends Device
             return cacheUpdated();
         }
 
-        public void run() {
+        public void run()
+        {
             for (int i = 0; i < NUM_RETRIES; ++i) {
 
                 // check if we got a reply
                 if (attempt()) {
                     MACAddress destMac = arpCache.lookup(targetIPAddress).getMac();
-                    System.out.printf("ATTEMPT %d for %s SUCCEEDED\n", i, IPv4.fromIPv4Address(this.targetIPAddress));
                     // send all packets
                     lock.lock();
                     try {
@@ -403,7 +413,6 @@ public class Router extends Device
                         for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
                             Ethernet ether = (Ethernet) packet;
                             ether.setDestinationMACAddress(destMac.toBytes());
-                            System.out.println("sending packet: " + ether);
                             sendPacket(ether, outIface);
                         }
                         waitingQ.remove(targetIPAddress);
@@ -412,8 +421,6 @@ public class Router extends Device
                     }
 
                     return;
-                } else {
-                    System.out.printf("ATTEMPT %d for %s FAILED\n", i, IPv4.fromIPv4Address(this.targetIPAddress));
                 }
             }
             
