@@ -189,6 +189,8 @@ public class Router extends Device
                     }
 
                     return;
+                } else {
+                    System.out.println("no reply");
                 }
             }
             
