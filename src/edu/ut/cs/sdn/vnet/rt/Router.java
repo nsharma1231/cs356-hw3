@@ -115,9 +115,10 @@ public class Router extends Device
             udp.setSourcePort(UDP.RIP_PORT);
             udp.setDestinationPort(UDP.RIP_PORT);
             
-            udp.setPayload(ripv2);
-            ip.setPayload(udp);
             ether.setPayload(ip);
+            ip.setPayload(udp);
+            udp.setPayload(ripv2);
+            
             System.out.println("sending out rip packets");
             forwardIpPacket(ether, iface, false);
         }
