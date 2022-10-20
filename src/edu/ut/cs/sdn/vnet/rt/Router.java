@@ -175,16 +175,16 @@ public class Router extends Device
     }
 
     // WHAT IS PASSED IN???
-    public void distanceVec(RIPv2Entry entry) {
-        /*
-         * (1) Distance d1 on its own route table entry corresponding to the nextHopAddress
-         * (2) Distance d2 as the metric value on the RIP entry, that says address is d2 hops away from nextHopAddress
-         * (3) Distance d3 on its own route table entry corresponding to address (current path to address)
-         * (4) It will updates its own route table for address if d1 + d2 <= d3, and sets new time and new distance , and gateway as the nextHopAddress
-         */
-        RouteEntry myEntry = routeTable.lookup(entry.getNextHopAddress());
-        int d2 = entry.getMetric();
-    }
+    // public void distanceVec(RIPv2Entry entry) {
+    //     /*
+    //      * (1) Distance d1 on its own route table entry corresponding to the nextHopAddress
+    //      * (2) Distance d2 as the metric value on the RIP entry, that says address is d2 hops away from nextHopAddress
+    //      * (3) Distance d3 on its own route table entry corresponding to address (current path to address)
+    //      * (4) It will updates its own route table for address if d1 + d2 <= d3, and sets new time and new distance , and gateway as the nextHopAddress
+    //      */
+    //     RouteEntry myEntry = routeTable.lookup(entry.getNextHopAddress());
+    //     int d2 = entry.getMetric();
+    // }
 
     /**
      * Load a new ARP cache from a file.
@@ -288,6 +288,7 @@ public class Router extends Device
             // It will updates its own route table for address if d1 + d2 <= d3,
             // and sets new time and new distance , and gateway as the nextHopAddress
             if (d1 + d2 <= d3) {
+                System.out.println("hello i am better");
                 if (!routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface))
                     routeTable.insert(address, inIface.getSubnetMask(), nextHopAddress, inIface);
             }
