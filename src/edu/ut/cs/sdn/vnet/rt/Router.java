@@ -1,17 +1,13 @@
 package edu.ut.cs.sdn.vnet.rt;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+
 
 import edu.ut.cs.sdn.vnet.Device;
 import edu.ut.cs.sdn.vnet.DumpFile;
@@ -51,14 +47,6 @@ public class Router extends Device
     private final ArpCache arpCache;
 
     private Map<Integer, Queue<BasePacket>> waitingQ;
-    private Lock arpLock;
-
-    public static final boolean VERBOSE = true;
-    private void LOG(String message)
-    {
-        if (VERBOSE)
-            System.err.println(message);
-    }
 
     /**
      * Creates a router for a specific host.
@@ -70,7 +58,6 @@ public class Router extends Device
         this.routeTable = new RouteTable();
         this.arpCache = new ArpCache();
         this.waitingQ = new HashMap<>();
-        this.arpLock = new ReentrantLock();
         this.ripv2 = new RIPv2();
     }
 
@@ -216,8 +203,6 @@ public class Router extends Device
     {
         assert etherPacket.getEtherType() == Ethernet.TYPE_ARP;
 
-        LOG("[INFO] Handle ARP packet");
-
         ARP arpPacket = (ARP) etherPacket.getPayload();
 
         switch (arpPacket.getOpCode()) {
@@ -228,7 +213,6 @@ public class Router extends Device
                 MACAddress macAddress = new MACAddress(arpPacket.getSenderHardwareAddress());
                 int ip = IPv4.toIPv4Address(arpPacket.getSenderProtocolAddress());
                 this.arpCache.insert(macAddress, ip);
-                // gets sent out in thread
                 break;
             default:
                 break;
@@ -243,13 +227,10 @@ public class Router extends Device
      */
     private void handleRipPacket(Ethernet etherPacket, Iface inIface)
     {
-        System.out.println("------ " + this.getHost() + " ------\n" + this.routeTable.toString());
-        System.out.println("------ " + this.getHost() + " ------\n" + this.ripv2.toString());
         IPv4 ip = (IPv4) etherPacket.getPayload();
         UDP udp = (UDP) ip.getPayload();
         RIPv2 rip = (RIPv2) udp.getPayload();
 
-        boolean response = (rip.getCommand() == RIPv2.COMMAND_RESPONSE);
         boolean request = (rip.getCommand() == RIPv2.COMMAND_REQUEST);
 
         // Handle RIP request -> should just send back our RIP 
@@ -284,27 +265,21 @@ public class Router extends Device
         List<RIPv2Entry> incomingRIPEntries = rip.getEntries();
         for (int i = 0; i < incomingRIPEntries.size(); i++) {
             RIPv2Entry incomingRIPEntry = incomingRIPEntries.get(i);
-            System.out.println("INCOMING RIP ENTRY --> " + incomingRIPEntry.toString());
+
             // This is their current information for the distance from address to nextHop
             int theirMetricNextHopToAddress = incomingRIPEntry.getMetric();
             int address = incomingRIPEntry.getAddress();
-            int nextHopAddress = incomingRIPEntry.getNextHopAddress();
 
             // Need to compare with my information for the same addresses
-            RIPv2Entry myNextHopEntry = null;
             RIPv2Entry myAddressEntry = null;
             List<RIPv2Entry> myEntries = this.ripv2.getEntries();
             for (int j = 0; j < myEntries.size(); j++) {
-                if (myEntries.get(j).getAddress() == nextHopAddress)
-                    myNextHopEntry = myEntries.get(j);
                 if (myEntries.get(j).getAddress() == address)
-
                     myAddressEntry = myEntries.get(j);
             }
 
             long myMetricToAddress = myAddressEntry == null ? Integer.MAX_VALUE : myAddressEntry.getMetric();
-            long myMetricToNextHop = myNextHopEntry == null ? Integer.MAX_VALUE : myNextHopEntry.getMetric();
-            long dist = myMetricToNextHop + theirMetricNextHopToAddress + 1;
+            
             if (theirMetricNextHopToAddress + 1 < myMetricToAddress) {
                 if (myAddressEntry != null)
                     myAddressEntry.setMetric(theirMetricNextHopToAddress + 1);
@@ -329,8 +304,6 @@ public class Router extends Device
     {
         // Make sure it's an IP packet
         assert etherPacket.getEtherType() == Ethernet.TYPE_IPv4;
-
-        LOG("[INFO] Handle IP packet");
 
         // handle RIP packet separately
         if (this.isRipPacket(etherPacket)) {
@@ -465,7 +438,6 @@ public class Router extends Device
     {
         // Make sure it's an IP packet
         assert etherPacket.getEtherType() == Ethernet.TYPE_IPv4;
-        LOG("[INFO] Forward IP packet");
 
         // Get IP header
         IPv4 ipPacket = (IPv4)etherPacket.getPayload();
