@@ -287,9 +287,10 @@ public class Router extends Device
                 if (entries.get(i).getAddress() == address)
                     addressEntry = entries.get(i);
             }
-
-            d1 = newHopEntry.getMetric();
-            d3 = addressEntry.getMetric();
+            if (newHopEntry != null)
+                d1 = newHopEntry.getMetric();
+            if (addressEntry != null)
+                d3 = addressEntry.getMetric();
 
             // It will updates its own route table for address if d1 + d2 <= d3,
             // and sets new time and new distance , and gateway as the nextHopAddress
