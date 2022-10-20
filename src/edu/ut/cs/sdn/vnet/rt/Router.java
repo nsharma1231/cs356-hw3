@@ -288,7 +288,6 @@ public class Router extends Device
             // It will updates its own route table for address if d1 + d2 <= d3,
             // and sets new time and new distance , and gateway as the nextHopAddress
             if (d1 + d2 <= d3) {
-                
                 if (!routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface))
                     routeTable.insert(address, inIface.getSubnetMask(), nextHopAddress, inIface);
             }
@@ -477,8 +476,19 @@ public class Router extends Device
         // Set destination MAC address in Ethernet header
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (arpEntry == null) {
-            arpLock.lock();
-            try {
+            // arpLock.lock();
+            // try {
+            //     if (waitingQ.get(nextHop) == null) {
+            //         waitingQ.put(nextHop, new LinkedList<BasePacket>(Arrays.asList(etherPacket)));
+            //         Thread arpRequest = new ARPRequest(etherPacket, inIface, outIface, nextHop);
+            //         arpRequest.start();
+            //     } else {
+            //         waitingQ.get(nextHop).add(etherPacket);
+            //     }
+            // } finally {
+            //     arpLock.unlock();
+            // }
+            synchronized(this.waitingQ) {
                 if (waitingQ.get(nextHop) == null) {
                     waitingQ.put(nextHop, new LinkedList<BasePacket>(Arrays.asList(etherPacket)));
                     Thread arpRequest = new ARPRequest(etherPacket, inIface, outIface, nextHop);
@@ -486,8 +496,6 @@ public class Router extends Device
                 } else {
                     waitingQ.get(nextHop).add(etherPacket);
                 }
-            } finally {
-                arpLock.unlock();
             }
             return;
         }
@@ -569,8 +577,19 @@ public class Router extends Device
                 if (attempt()) {
                     MACAddress destMac = arpCache.lookup(targetIPAddress).getMac();
                     // send all packets
-                    arpLock.lock();
-                    try {
+                    // arpLock.lock();
+                    // try {
+                    //     assert waitingQ.get(this.targetIPAddress) != null;
+                    //     for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
+                    //         Ethernet ether = (Ethernet) packet;
+                    //         ether.setDestinationMACAddress(destMac.toBytes());
+                    //         sendPacket(ether, outIface);
+                    //     }
+                    //     waitingQ.remove(targetIPAddress);
+                    // } finally {
+                    //     arpLock.unlock();
+                    // }
+                    synchronized(waitingQ) {
                         assert waitingQ.get(this.targetIPAddress) != null;
                         for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
                             Ethernet ether = (Ethernet) packet;
@@ -578,26 +597,25 @@ public class Router extends Device
                             sendPacket(ether, outIface);
                         }
                         waitingQ.remove(targetIPAddress);
-                    } finally {
-                        arpLock.unlock();
                     }
-
                     return;
                 }
             }
             
             // all attempts have failed, drop all packets and generate ICMP for each
-            arpLock.lock();
-            try {
+            // arpLock.lock();
+            // try {
+            synchronized(waitingQ) {
                 assert waitingQ.get(this.targetIPAddress) != null;
                 for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
                     Ethernet ether = (Ethernet) packet;
                     generateICMP(ether, inIface, (byte) 3, (byte) 1);
                 }
                 waitingQ.remove(targetIPAddress);
-            } finally {
-                arpLock.unlock();
             }
+            // } finally {
+            //     arpLock.unlock();
+            // }
         }
     }
 }
