@@ -286,7 +286,7 @@ public class Router extends Device
             RIPv2Entry incomingRIPEntry = incomingRIPEntries.get(i);
             System.out.println("INCOMING RIP ENTRY --> " + incomingRIPEntry.toString());
             // This is their current information for the distance from address to nextHop
-            int theirMetricAddressToNextHop = incomingRIPEntry.getMetric();
+            int theirMetricNextHopToAddress = incomingRIPEntry.getMetric();
             int address = incomingRIPEntry.getAddress();
             int nextHopAddress = incomingRIPEntry.getNextHopAddress();
 
@@ -302,19 +302,19 @@ public class Router extends Device
                     myAddressEntry = myEntries.get(j);
             }
 
-            int myMetricToAddress = myAddressEntry == null ? Integer.MAX_VALUE : myAddressEntry.getMetric();
-            int myMetricToNextHop = myNextHopEntry == null ? Integer.MAX_VALUE : myNextHopEntry.getMetric();
-            int dist = myMetricToAddress + theirMetricAddressToNextHop + 1;
-            if (dist <= myMetricToNextHop) {
-                if (myNextHopEntry != null)
-                    myNextHopEntry.setMetric(dist);
+            long myMetricToAddress = myAddressEntry == null ? Integer.MAX_VALUE : myAddressEntry.getMetric();
+            long myMetricToNextHop = myNextHopEntry == null ? Integer.MAX_VALUE : myNextHopEntry.getMetric();
+            long dist = myMetricToNextHop + theirMetricNextHopToAddress + 1;
+            if (dist <= myMetricToAddress) {
+                if (myAddressEntry != null)
+                    myAddressEntry.setMetric((int)dist);
                 else
-                    ripv2.addEntry(new RIPv2Entry(nextHopAddress, inIface.getSubnetMask(), dist));
+                    ripv2.addEntry(new RIPv2Entry(address, inIface.getSubnetMask(), (int)dist));
                     
-                if (this.routeTable.lookup(nextHopAddress) != null)
-                    this.routeTable.update(nextHopAddress, address, inIface.getSubnetMask(), inIface);
+                if (this.routeTable.lookup(address) != null)
+                    this.routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface);
                 else 
-                    this.routeTable.insert(nextHopAddress, address, inIface.getSubnetMask(), inIface);
+                    this.routeTable.insert(address, nextHopAddress, inIface.getSubnetMask(), inIface);
             }
         }
 
