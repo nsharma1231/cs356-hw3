@@ -222,7 +222,7 @@ public class Router extends Device
 
         switch (arpPacket.getOpCode()) {
             case ARP.OP_REQUEST:
-                // this.generateARP(etherPacket, inIface, ARP.OP_REPLY, 0);
+                this.generateARP(etherPacket, inIface, ARP.OP_REPLY, 0);
                 break;
             case ARP.OP_REPLY:
                 MACAddress macAddress = new MACAddress(arpPacket.getSenderHardwareAddress());
@@ -499,23 +499,11 @@ public class Router extends Device
         // Set destination MAC address in Ethernet header
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (arpEntry == null) {
-            // arpLock.lock();
-            // try {
-            //     if (waitingQ.get(nextHop) == null) {
-            //         waitingQ.put(nextHop, new LinkedList<BasePacket>(Arrays.asList(etherPacket)));
-            //         Thread arpRequest = new ARPRequest(etherPacket, inIface, outIface, nextHop);
-            //         arpRequest.start();
-            //     } else {
-            //         waitingQ.get(nextHop).add(etherPacket);
-            //     }
-            // } finally {
-            //     arpLock.unlock();
-            // }
             synchronized(this.waitingQ) {
                 if (waitingQ.get(nextHop) == null) {
                     waitingQ.put(nextHop, new LinkedList<BasePacket>(Arrays.asList(etherPacket)));
-                    // Thread arpRequest = new ARPRequest(etherPacket, inIface, outIface, nextHop);
-                    // arpRequest.start();
+                    Thread arpRequest = new ARPRequest(etherPacket, inIface, outIface, nextHop);
+                    arpRequest.start();
                 } else {
                     waitingQ.get(nextHop).add(etherPacket);
                 }
@@ -597,18 +585,7 @@ public class Router extends Device
                 if (attempt()) {
                     MACAddress destMac = arpCache.lookup(targetIPAddress).getMac();
                     // send all packets
-                    // arpLock.lock();
-                    // try {
-                    //     assert waitingQ.get(this.targetIPAddress) != null;
-                    //     for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
-                    //         Ethernet ether = (Ethernet) packet;
-                    //         ether.setDestinationMACAddress(destMac.toBytes());
-                    //         sendPacket(ether, outIface);
-                    //     }
-                    //     waitingQ.remove(targetIPAddress);
-                    // } finally {
-                    //     arpLock.unlock();
-                    // }
+
                     synchronized(waitingQ) {
                         assert waitingQ.get(this.targetIPAddress) != null;
                         for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
@@ -623,8 +600,7 @@ public class Router extends Device
             }
             
             // all attempts have failed, drop all packets and generate ICMP for each
-            // arpLock.lock();
-            // try {
+
             synchronized(waitingQ) {
                 assert waitingQ.get(this.targetIPAddress) != null;
                 for (BasePacket packet : waitingQ.get(this.targetIPAddress)) {
@@ -633,9 +609,6 @@ public class Router extends Device
                 }
                 waitingQ.remove(targetIPAddress);
             }
-            // } finally {
-            //     arpLock.unlock();
-            // }
         }
     }
 }
