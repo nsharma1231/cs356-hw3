@@ -45,6 +45,8 @@ public class Router extends Device
     private final long UNSOLICITED_WAIT = 10_000L;
     private final long CHECK_ROUTE_ENTRY_WAIT = 30_000L;
 
+    private final int RIP_MULTICAST_IP = IPv4.toIPv4Address("224.0.0.9");
+
     /** ARP cache for the router */
     private final ArpCache arpCache;
 
@@ -97,8 +99,7 @@ public class Router extends Device
         System.out.println("-------------------------------------------------");
     }
 
-    public void broadcastRIP() {
-        System.out.println("broadcast Rip is called");
+    public void broadcastRIP(byte command) {
         for (Iface iface : this.interfaces.values()) {
             Ethernet ether = new Ethernet();
             ether.setEtherType(Ethernet.TYPE_IPv4);
@@ -109,43 +110,39 @@ public class Router extends Device
             ip.setTtl((byte) 64);
             ip.setProtocol(IPv4.PROTOCOL_UDP);
             ip.setSourceAddress(iface.getIpAddress());
-            ip.setDestinationAddress(IPv4.toIPv4Address("224.0.0.9"));
+            ip.setDestinationAddress(RIP_MULTICAST_IP);
 
             UDP udp = new UDP();
             udp.setSourcePort(UDP.RIP_PORT);
             udp.setDestinationPort(UDP.RIP_PORT);
+
+            RIPv2 rip = new RIPv2();
+            rip.setEntries(ripv2.getEntries());
+            rip.setCommand(command);
             
             ether.setPayload(ip);
             ip.setPayload(udp);
-            udp.setPayload(ripv2);
+            udp.setPayload(rip);
             
-            System.out.println("sending out rip packets");
             sendPacket(ether, iface);
         }
     }
 
     public void runRIP()
     {
-        System.out.println("run rip is called");
         for (Iface iface : this.interfaces.values()) {
-            /*
-             *  (1) Add entries to the route table for the subnets that are directly reachable via the router's interfaces 
-             *  (2) Based on the IP address and netmask associated with each of the router's interfaces. 
-             *  (3) These entries should have no gateway.
-             */
             this.routeTable.insert(iface.getIpAddress(),    // dstIp
                                    0,                       // gwIp
                                    iface.getSubnetMask(),   // maskIp
                                    iface);                  // iface
             
             this.ripv2.addEntry(new RIPv2Entry(iface.getIpAddress(), iface.getSubnetMask(), 0));
-            
         }
         
         // Send out RIP Request on each of these interfaces (RIPv2 is a BasePacket)
-        broadcastRIP();
+        broadcastRIP(RIPv2.COMMAND_REQUEST);
 
-
+        // Send out unsolicited responses every 10 seconds
         Thread thread = new Thread() {
             public void run() {
                 while (true) {
@@ -154,37 +151,12 @@ public class Router extends Device
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    broadcastRIP();
+                    broadcastRIP(RIPv2.COMMAND_RESPONSE);
                 }
             }
         };
         thread.start();
-        
-        // TimerTask dropTask = new TimerTask() {
-        //      public void run() {
-        //         LOG("drop ?");
-        //      }
-        // };
-        // try {
-        //     dropTask.wait(CHECK_ROUTE_ENTRY_WAIT);
-        //     dropTask.run();
-        // } catch (InterruptedException e) {
-        //     e.printStackTrace();
-        // }
-        
     }
-
-    // WHAT IS PASSED IN???
-    // public void distanceVec(RIPv2Entry entry) {
-    //     /*
-    //      * (1) Distance d1 on its own route table entry corresponding to the nextHopAddress
-    //      * (2) Distance d2 as the metric value on the RIP entry, that says address is d2 hops away from nextHopAddress
-    //      * (3) Distance d3 on its own route table entry corresponding to address (current path to address)
-    //      * (4) It will updates its own route table for address if d1 + d2 <= d3, and sets new time and new distance , and gateway as the nextHopAddress
-    //      */
-    //     RouteEntry myEntry = routeTable.lookup(entry.getNextHopAddress());
-    //     int d2 = entry.getMetric();
-    // }
 
     /**
      * Load a new ARP cache from a file.
@@ -268,45 +240,68 @@ public class Router extends Device
      * @param ripPacket the RIP packet that was received
      * @param inIface the interface on which the packet was received
      */
-    private void handleRipPacket(RIPv2 ripPacket, Iface inIface)
+    private void handleRipPacket(Ethernet etherPacket, RIPv2 ripPacket, Iface inIface)
     {
-        for (RIPv2Entry entry : ripPacket.getEntries()) {
-            int address = entry.getAddress();
-            int nextHopAddress = entry.getNextHopAddress();
+        boolean response = ripPacket.getCommand() == RIPv2.COMMAND_REQUEST;
+
+        for (RIPv2Entry packetEntry : ripPacket.getEntries()) {
+            int address = packetEntry.getAddress();
+            int nextHopAddress = packetEntry.getNextHopAddress();
             int d1 = Integer.MAX_VALUE;
-            int d2 = entry.getMetric();
+            int d2 = packetEntry.getMetric();
             int d3 = Integer.MAX_VALUE;
 
             RIPv2Entry addressEntry = null;
             RIPv2Entry newHopEntry = null;
             
-            List<RIPv2Entry> entries = this.ripv2.getEntries();
-            for (int i = 0; i < entries.size(); i++) {
-                if (entries.get(i).getNextHopAddress() == nextHopAddress) 
-                    newHopEntry = entries.get(i);
-                if (entries.get(i).getAddress() == address)
-                    addressEntry = entries.get(i);
+            List<RIPv2Entry> routerEntries = this.ripv2.getEntries();
+            for (int i = 0; i < routerEntries.size(); i++) {
+                if (routerEntries.get(i).getNextHopAddress() == nextHopAddress) 
+                    newHopEntry = routerEntries.get(i);
+                if (routerEntries.get(i).getAddress() == address)
+                    addressEntry = routerEntries.get(i);
             }
             if (newHopEntry != null)
                 d1 = newHopEntry.getMetric();
             if (addressEntry != null)
                 d3 = addressEntry.getMetric();
 
-            // It will updates its own route table for address if d1 + d2 <= d3,
-            // and sets new time and new distance , and gateway as the nextHopAddress
+            // check if we need to update our rtable with new information
             if (d1 + d2 + 1 <= d3) {
-                System.out.println("hello i am better " + d1 + " " + d2 + " " + (d1 + d2 + 1) + " " + d3);
+                // update route table
                 if (!routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface)) 
                     routeTable.insert(address, inIface.getSubnetMask(), nextHopAddress, inIface);
-                for (int i = 0; i < entries.size(); i++) {
-                    RIPv2Entry r2e = entries.get(i);
-                    if (r2e.getAddress() == address) {
-                        r2e.setMetric(d1 + d2 + 1);
-                        return;
-                    }
-                }
-                // not already in list, add to list
-                entries.add(new RIPv2Entry(address, inIface.getSubnetMask(), d1 + d2 + 1));
+                
+                // update route entries
+                routerEntries.add(0, new RIPv2Entry(address, inIface.getSubnetMask(), d1 + d2 + 1));
+            }
+
+            // generate a response if we just got a request
+            if (response) {
+                Ethernet ether = new Ethernet();
+                ether.setEtherType(Ethernet.TYPE_IPv4);
+                ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
+                ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
+    
+                IPv4 ip = new IPv4();
+                ip.setTtl((byte) 64);
+                ip.setProtocol(IPv4.PROTOCOL_UDP);
+                ip.setSourceAddress(inIface.getIpAddress());
+                ip.setDestinationAddress(((IPv4)etherPacket.getPayload()).getSourceAddress());
+    
+                UDP udp = new UDP();
+                udp.setSourcePort(UDP.RIP_PORT);
+                udp.setDestinationPort(UDP.RIP_PORT);
+    
+                RIPv2 rip = new RIPv2();
+                rip.setEntries(ripv2.getEntries());
+                rip.setCommand(RIPv2.COMMAND_RESPONSE);
+                
+                ether.setPayload(ip);
+                ip.setPayload(udp);
+                udp.setPayload(rip);
+                
+                sendPacket(ether, inIface);
             }
         }
     }
@@ -324,11 +319,12 @@ public class Router extends Device
         LOG("[INFO] Handle IP packet");
         System.out.println(etherPacket.getDestinationMACAddress() == BROADCAST); 
 
+        // handle RIP packet separately
         if (this.isRipPacket(etherPacket)) {
             IPv4 ip = (IPv4) etherPacket.getPayload();
             UDP udp = (UDP) ip.getPayload();
             RIPv2 rip = (RIPv2) udp.getPayload();
-            this.handleRipPacket(rip, inIface);
+            this.handleRipPacket(etherPacket, rip, inIface);
             return;
         }
 
@@ -526,11 +522,8 @@ public class Router extends Device
         assert etherPacket.getEtherType() == Ethernet.TYPE_IPv4;
     
         IPv4 ipPacket = (IPv4) etherPacket.getPayload();
-        LOG("ip address = " + IPv4.fromIPv4Address(ipPacket.getDestinationAddress()));
-        LOG("ipPacket.getProtocol() = " + ipPacket.getProtocol());
-        LOG("IPv4.PROTOCOL_UDP = " + IPv4.PROTOCOL_UDP);
 
-        if (ipPacket.getDestinationAddress() != IPv4.toIPv4Address("224.0.0.9"))
+        if (ipPacket.getDestinationAddress() != RIP_MULTICAST_IP)
             return false;
         if (ipPacket.getProtocol() != IPv4.PROTOCOL_UDP)
             return false;
