@@ -311,8 +311,7 @@ public class Router extends Device
             IPv4 ip = (IPv4) etherPacket.getPayload();
             UDP udp = (UDP) ip.getPayload();
             RIPv2 rip = (RIPv2) udp.getPayload();
-            // this.handleRipPacket(rip, inIface);
-            LOG("received rip packet");
+            this.handleRipPacket(rip, inIface);
             return;
         }
 
