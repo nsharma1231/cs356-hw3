@@ -273,7 +273,15 @@ public class Router extends Device
                     routeTable.insert(address, inIface.getSubnetMask(), nextHopAddress, inIface);
                 
                 // update route entries
-                routerEntries.add(0, new RIPv2Entry(address, inIface.getSubnetMask(), d1 + d2 + 1));
+                boolean found = false;
+                for (int i = 0; i < routerEntries.size(); ++i)
+                    if (routerEntries.get(i).getAddress() == address) {
+                        routerEntries.get(i).setMetric(d1 + d2 + 1);
+                        found = true;
+                        break;
+                    }
+                if (!found)
+                    routerEntries.add(new RIPv2Entry(address, inIface.getSubnetMask(), d1 + d2 + 1));
             }
 
             // generate a response if we just got a request
@@ -317,7 +325,6 @@ public class Router extends Device
         assert etherPacket.getEtherType() == Ethernet.TYPE_IPv4;
 
         LOG("[INFO] Handle IP packet");
-        System.out.println(etherPacket.getDestinationMACAddress() == BROADCAST); 
 
         // handle RIP packet separately
         if (this.isRipPacket(etherPacket)) {
