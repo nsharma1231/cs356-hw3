@@ -227,7 +227,6 @@ public class Router extends Device
             this.handleArpPacket(etherPacket, inIface);
             break;
         default:
-            LOG("[INFO] Got a strange packet --> " + etherPacket);
             break;
         
         // Ignore all other packet types, for now
@@ -306,6 +305,7 @@ public class Router extends Device
         assert etherPacket.getEtherType() == Ethernet.TYPE_IPv4;
 
         LOG("[INFO] Handle IP packet");
+        System.out.println(etherPacket.getDestinationMACAddress() == BROADCAST); 
 
         if (this.isRipPacket(etherPacket)) {
             IPv4 ip = (IPv4) etherPacket.getPayload();
