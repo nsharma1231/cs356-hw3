@@ -227,6 +227,7 @@ public class Router extends Device
             this.handleArpPacket(etherPacket, inIface);
             break;
         default:
+            LOG("[INFO] Got a strange packet --> " + etherPacket);
             break;
         
         // Ignore all other packet types, for now
