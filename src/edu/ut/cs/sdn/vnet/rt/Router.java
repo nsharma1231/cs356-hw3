@@ -276,20 +276,27 @@ public class Router extends Device
             int d1 = Integer.MAX_VALUE;
             int d2 = entry.getMetric();
             int d3 = Integer.MAX_VALUE;
+
+            RIPv2Entry addressEntry = null;
+            RIPv2Entry newHopEntry = null;
             
             List<RIPv2Entry> entries = this.ripv2.getEntries();
             for (int i = 0; i < entries.size(); i++) {
                 if (entries.get(i).getNextHopAddress() == nextHopAddress) 
-                    d1 = entries.get(i).getMetric();
+                    newHopEntry = entries.get(i);
                 if (entries.get(i).getAddress() == address)
-                    d3 = entries.get(i).getMetric();
+                    addressEntry = entries.get(i);
             }
+
+            d1 = newHopEntry.getMetric();
+            d3 = addressEntry.getMetric();
 
             // It will updates its own route table for address if d1 + d2 <= d3,
             // and sets new time and new distance , and gateway as the nextHopAddress
             if (d1 + d2 <= d3) {
                 System.out.println("hello i am better");
-                if (!routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface))
+
+                if (!routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface)) 
                     routeTable.insert(address, inIface.getSubnetMask(), nextHopAddress, inIface);
             }
         }
