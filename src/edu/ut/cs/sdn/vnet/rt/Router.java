@@ -136,7 +136,8 @@ public class Router extends Device
                                    iface.getSubnetMask(),   // maskIp
                                    iface);                  // iface
             
-            this.ripv2.addEntry(new RIPv2Entry(iface.getIpAddress(), iface.getSubnetMask(), 0));
+            RIPv2Entry newEntry = new RIPv2Entry(iface.getIpAddress(), iface.getSubnetMask(), 0);
+            this.ripv2.addEntry(newEntry);
         }
         
         // Send out RIP Request on each of these interfaces (RIPv2 is a BasePacket)
@@ -240,78 +241,80 @@ public class Router extends Device
      * @param ripPacket the RIP packet that was received
      * @param inIface the interface on which the packet was received
      */
-    private void handleRipPacket(Ethernet etherPacket, RIPv2 ripPacket, Iface inIface)
+    private void handleRipPacket(Ethernet etherPacket, Iface inIface)
     {
-        boolean response = ripPacket.getCommand() == RIPv2.COMMAND_REQUEST;
+        IPv4 ip = (IPv4) etherPacket.getPayload();
+        UDP udp = (UDP) ip.getPayload();
+        RIPv2 rip = (RIPv2) udp.getPayload();
 
-        for (RIPv2Entry packetEntry : ripPacket.getEntries()) {
-            int address = packetEntry.getAddress();
-            int nextHopAddress = packetEntry.getNextHopAddress();
-            int d1 = Integer.MAX_VALUE;
-            int d2 = packetEntry.getMetric();
-            int d3 = Integer.MAX_VALUE;
+        boolean response = (rip.getCommand() == RIPv2.COMMAND_RESPONSE);
+        boolean request = (rip.getCommand() == RIPv2.COMMAND_REQUEST);
 
-            RIPv2Entry addressEntry = null;
-            RIPv2Entry newHopEntry = null;
+        // Handle RIP request -> should just send back our RIP 
+        if (request) {
+            Ethernet resp_ether = new Ethernet();
+            resp_ether.setEtherType(Ethernet.TYPE_IPv4);
+            resp_ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
+            resp_ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
+
+            IPv4 resp_ip = new IPv4();
+            resp_ip.setTtl((byte) 64);
+            resp_ip.setProtocol(IPv4.PROTOCOL_UDP);
+            resp_ip.setSourceAddress(inIface.getIpAddress());
+            resp_ip.setDestinationAddress(ip.getSourceAddress());
+
+            UDP resp_udp = new UDP();
+            resp_udp.setSourcePort(UDP.RIP_PORT);
+            resp_udp.setDestinationPort(UDP.RIP_PORT);
+
+            RIPv2 resp_rip = new RIPv2();
+            resp_rip.setEntries(ripv2.getEntries());
+            resp_rip.setCommand(RIPv2.COMMAND_RESPONSE);
             
-            List<RIPv2Entry> routerEntries = this.ripv2.getEntries();
-            for (int i = 0; i < routerEntries.size(); i++) {
-                if (routerEntries.get(i).getNextHopAddress() == nextHopAddress) 
-                    newHopEntry = routerEntries.get(i);
-                if (routerEntries.get(i).getAddress() == address)
-                    addressEntry = routerEntries.get(i);
-            }
-            if (newHopEntry != null)
-                d1 = newHopEntry.getMetric();
-            if (addressEntry != null)
-                d3 = addressEntry.getMetric();
+            resp_ether.setPayload(resp_ip);
+            resp_ip.setPayload(resp_udp);
+            resp_udp.setPayload(resp_rip);
+            
+            sendPacket(resp_ether, inIface);
+        }
 
-            // check if we need to update our rtable with new information
-            if (d1 + d2 + 1 <= d3) {
-                // update route table
-                if (!routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface)) 
-                    routeTable.insert(address, inIface.getSubnetMask(), nextHopAddress, inIface);
-                
-                // update route entries
-                boolean found = false;
-                for (int i = 0; i < routerEntries.size(); ++i)
-                    if (routerEntries.get(i).getAddress() == address) {
-                        routerEntries.get(i).setMetric(d1 + d2 + 1);
-                        found = true;
-                        break;
-                    }
-                if (!found)
-                    routerEntries.add(new RIPv2Entry(address, inIface.getSubnetMask(), d1 + d2 + 1));
+        // Received a RIP response, so we'll update our RIP with new info
+        List<RIPv2Entry> incomingRIPEntries = rip.getEntries();
+        for (int i = 0; i < incomingRIPEntries.size(); i++) {
+            RIPv2Entry incomingRIPEntry = incomingRIPEntries.get(i);
+            
+            // This is their current information for the distance from address to nextHop
+            int theirMetricAddressToNextHop = incomingRIPEntry.getMetric();
+            int address = incomingRIPEntry.getAddress();
+            int nextHopAddress = incomingRIPEntry.getNextHopAddress();
+
+            // Need to compare with my information for the same addresses
+            RIPv2Entry myNextHopEntry = null;
+            RIPv2Entry myAddressEntry = null;
+            List<RIPv2Entry> myEntries = this.ripv2.getEntries();
+            for (int j = 0; j < myEntries.size(); j++) {
+                if (myEntries.get(j).getAddress() == nextHopAddress)
+                    myNextHopEntry = myEntries.get(j);
+                if (myEntries.get(j).getAddress() == address)
+                    myAddressEntry = myEntries.get(j);
             }
 
-            // generate a response if we just got a request
-            if (response) {
-                Ethernet ether = new Ethernet();
-                ether.setEtherType(Ethernet.TYPE_IPv4);
-                ether.setSourceMACAddress(inIface.getMacAddress().toBytes());
-                ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
-    
-                IPv4 ip = new IPv4();
-                ip.setTtl((byte) 64);
-                ip.setProtocol(IPv4.PROTOCOL_UDP);
-                ip.setSourceAddress(inIface.getIpAddress());
-                ip.setDestinationAddress(((IPv4)etherPacket.getPayload()).getSourceAddress());
-    
-                UDP udp = new UDP();
-                udp.setSourcePort(UDP.RIP_PORT);
-                udp.setDestinationPort(UDP.RIP_PORT);
-    
-                RIPv2 rip = new RIPv2();
-                rip.setEntries(ripv2.getEntries());
-                rip.setCommand(RIPv2.COMMAND_RESPONSE);
-                
-                ether.setPayload(ip);
-                ip.setPayload(udp);
-                udp.setPayload(rip);
-                
-                sendPacket(ether, inIface);
+            int myMetricToAddress = myAddressEntry == null ? Integer.MAX_VALUE : myAddressEntry.getMetric();
+            int myMetricToNextHop = myNextHopEntry == null ? Integer.MAX_VALUE : myNextHopEntry.getMetric();
+            int dist = myMetricToAddress + theirMetricAddressToNextHop + 1;
+            if (dist <= myMetricToNextHop) {
+                if (myNextHopEntry != null)
+                    myNextHopEntry.setMetric(dist);
+                else
+                    ripv2.addEntry(new RIPv2Entry(nextHopAddress, inIface.getSubnetMask(), dist));
+                    
+                if (this.routeTable.lookup(nextHopAddress) != null)
+                    this.routeTable.update(nextHopAddress, inIface.getIpAddress(), address, inIface);
+                else 
+                    this.routeTable.insert(nextHopAddress, inIface.getIpAddress(), address, inIface);
             }
         }
+
     }
 
     /**
@@ -328,10 +331,7 @@ public class Router extends Device
 
         // handle RIP packet separately
         if (this.isRipPacket(etherPacket)) {
-            IPv4 ip = (IPv4) etherPacket.getPayload();
-            UDP udp = (UDP) ip.getPayload();
-            RIPv2 rip = (RIPv2) udp.getPayload();
-            this.handleRipPacket(etherPacket, rip, inIface);
+            this.handleRipPacket(etherPacket, inIface);
             return;
         }
 
