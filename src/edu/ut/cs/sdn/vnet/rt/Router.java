@@ -491,8 +491,8 @@ public class Router extends Device
             synchronized(this.waitingQ) {
                 if (waitingQ.get(nextHop) == null) {
                     waitingQ.put(nextHop, new LinkedList<BasePacket>(Arrays.asList(etherPacket)));
-                    Thread arpRequest = new ARPRequest(etherPacket, inIface, outIface, nextHop);
-                    arpRequest.start();
+                    // Thread arpRequest = new ARPRequest(etherPacket, inIface, outIface, nextHop);
+                    // arpRequest.start();
                 } else {
                     waitingQ.get(nextHop).add(etherPacket);
                 }
