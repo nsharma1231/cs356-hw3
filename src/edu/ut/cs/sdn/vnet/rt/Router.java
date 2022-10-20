@@ -243,6 +243,8 @@ public class Router extends Device
      */
     private void handleRipPacket(Ethernet etherPacket, Iface inIface)
     {
+        System.out.println("------ " + this.getHost() + " ------\n" + this.routeTable.toString());
+
         IPv4 ip = (IPv4) etherPacket.getPayload();
         UDP udp = (UDP) ip.getPayload();
         RIPv2 rip = (RIPv2) udp.getPayload();
@@ -296,6 +298,7 @@ public class Router extends Device
                 if (myEntries.get(j).getAddress() == nextHopAddress)
                     myNextHopEntry = myEntries.get(j);
                 if (myEntries.get(j).getAddress() == address)
+
                     myAddressEntry = myEntries.get(j);
             }
 
