@@ -286,7 +286,7 @@ public class Router extends Device
             RIPv2Entry incomingRIPEntry = incomingRIPEntries.get(i);
             System.out.println("INCOMING RIP ENTRY --> " + incomingRIPEntry.toString());
             // This is their current information for the distance from address to nextHop
-            int theirMetricAddressToNextHop = incomingRIPEntry.getMetric();
+            int theirMetricNextHopToAddress = incomingRIPEntry.getMetric();
             int address = incomingRIPEntry.getAddress();
             int nextHopAddress = incomingRIPEntry.getNextHopAddress();
 
@@ -303,9 +303,9 @@ public class Router extends Device
             }
 
             int myMetricToAddress = myAddressEntry == null ? Integer.MAX_VALUE : myAddressEntry.getMetric();
-            int myMetricToNextHop = myNextHopEntry == null ? Integer.MAX_VALUE : myNextHopEntry.getMetric();
-            int dist = myMetricToAddress + theirMetricAddressToNextHop + 1;
-            if (dist <= myMetricToNextHop) {
+            int myMetricToNextHop = myNextHopEntry == null ? 0                 : myNextHopEntry.getMetric();
+            int dist = myMetricToNextHop + theirMetricNextHopToAddress + 1;
+            if (dist <= myMetricToAddress) {
                 if (myNextHopEntry != null)
                     myNextHopEntry.setMetric(dist);
                 else
