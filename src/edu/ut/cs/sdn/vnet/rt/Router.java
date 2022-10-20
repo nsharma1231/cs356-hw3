@@ -286,7 +286,7 @@ public class Router extends Device
             RIPv2Entry incomingRIPEntry = incomingRIPEntries.get(i);
             System.out.println("INCOMING RIP ENTRY --> " + incomingRIPEntry.toString());
             // This is their current information for the distance from address to nextHop
-            int theirMetricNextHopToAddress = incomingRIPEntry.getMetric();
+            int theirMetricAddressToNextHop = incomingRIPEntry.getMetric();
             int address = incomingRIPEntry.getAddress();
             int nextHopAddress = incomingRIPEntry.getNextHopAddress();
 
@@ -303,18 +303,18 @@ public class Router extends Device
             }
 
             int myMetricToAddress = myAddressEntry == null ? Integer.MAX_VALUE : myAddressEntry.getMetric();
-            int myMetricToNextHop = myNextHopEntry == null ? 0                 : myNextHopEntry.getMetric();
-            int dist = myMetricToNextHop + theirMetricNextHopToAddress + 1;
-            if (dist <= myMetricToAddress) {
+            int myMetricToNextHop = myNextHopEntry == null ? Integer.MAX_VALUE : myNextHopEntry.getMetric();
+            int dist = myMetricToAddress + theirMetricAddressToNextHop + 1;
+            if (dist <= myMetricToNextHop) {
                 if (myNextHopEntry != null)
                     myNextHopEntry.setMetric(dist);
                 else
                     ripv2.addEntry(new RIPv2Entry(nextHopAddress, inIface.getSubnetMask(), dist));
                     
                 if (this.routeTable.lookup(nextHopAddress) != null)
-                    this.routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface);
+                    this.routeTable.update(nextHopAddress, inIface.getIpAddress(), address, inIface);
                 else 
-                    this.routeTable.insert(address, inIface.getSubnetMask(), nextHopAddress, inIface);
+                    this.routeTable.insert(nextHopAddress, inIface.getIpAddress(), address, inIface);
             }
         }
 
