@@ -287,9 +287,10 @@ public class Router extends Device
 
             // It will updates its own route table for address if d1 + d2 <= d3,
             // and sets new time and new distance , and gateway as the nextHopAddress
-            RouteEntry r = routeTable.lookup(address);
             if (d1 + d2 <= d3) {
-                routeTable.update(address, r.getMaskAddress(), nextHopAddress, inIface);
+                
+                if (!routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface))
+                    routeTable.insert(address, inIface.getSubnetMask(), nextHopAddress, inIface);
             }
         }
     }
