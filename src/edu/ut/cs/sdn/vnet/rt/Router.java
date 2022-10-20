@@ -312,9 +312,9 @@ public class Router extends Device
                     ripv2.addEntry(new RIPv2Entry(address, inIface.getSubnetMask(), (int)dist));
                     
                 if (this.routeTable.lookup(address) != null)
-                    this.routeTable.update(address, inIface.getSubnetMask(), nextHopAddress, inIface);
+                    this.routeTable.update(address, inIface.getSubnetMask(), ip.getSourceAddress(), inIface);
                 else 
-                    this.routeTable.insert(address, nextHopAddress, inIface.getSubnetMask(), inIface);
+                    this.routeTable.insert(address, ip.getSourceAddress(), inIface.getSubnetMask(), inIface);
             }
         }
 
