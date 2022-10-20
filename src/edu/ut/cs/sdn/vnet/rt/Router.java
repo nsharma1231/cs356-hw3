@@ -42,8 +42,8 @@ public class Router extends Device
     private final RouteTable routeTable;
     private final RIPv2 ripv2;
 
-    private final long UNSOLICITED_WAIT = 10000;
-    private final long CHECK_ROUTE_ENTRY_WAIT = 30000;
+    private final long UNSOLICITED_WAIT = 10_000L;
+    private final long CHECK_ROUTE_ENTRY_WAIT = 30_000L;
 
     /** ARP cache for the router */
     private final ArpCache arpCache;
@@ -144,13 +144,20 @@ public class Router extends Device
         // Send out RIP Request on each of these interfaces (RIPv2 is a BasePacket)
         broadcastRIP();
 
-        TimerTask broadcastTask = new TimerTask() {
+
+        Thread thread = new Thread() {
             public void run() {
-                broadcastRIP();
+                while (true) {
+                    try {
+                        Thread.sleep(UNSOLICITED_WAIT);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    broadcastRIP();
+                }
             }
         };
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(broadcastTask, System.currentTimeMillis(), UNSOLICITED_WAIT);
+        thread.start();
         
         // TimerTask dropTask = new TimerTask() {
         //      public void run() {
