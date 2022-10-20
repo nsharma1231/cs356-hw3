@@ -107,7 +107,7 @@ public class Router extends Device
             ether.setDestinationMACAddress(BROADCAST);
 
             IPv4 ip = new IPv4();
-            ip.setTtl((byte) 64);
+            ip.setTtl((byte) 1);
             ip.setProtocol(IPv4.PROTOCOL_UDP);
             ip.setSourceAddress(iface.getIpAddress());
             ip.setDestinationAddress(RIP_MULTICAST_IP);
@@ -260,7 +260,7 @@ public class Router extends Device
             resp_ether.setDestinationMACAddress(etherPacket.getSourceMACAddress());
 
             IPv4 resp_ip = new IPv4();
-            resp_ip.setTtl((byte) 64);
+            resp_ip.setTtl((byte) 15);
             resp_ip.setProtocol(IPv4.PROTOCOL_UDP);
             resp_ip.setSourceAddress(inIface.getIpAddress());
             resp_ip.setDestinationAddress(ip.getSourceAddress());
@@ -284,7 +284,7 @@ public class Router extends Device
         List<RIPv2Entry> incomingRIPEntries = rip.getEntries();
         for (int i = 0; i < incomingRIPEntries.size(); i++) {
             RIPv2Entry incomingRIPEntry = incomingRIPEntries.get(i);
-            
+            System.out.println("INCOMING RIP ENTRY --> " + incomingRIPEntry.toString());
             // This is their current information for the distance from address to nextHop
             int theirMetricAddressToNextHop = incomingRIPEntry.getMetric();
             int address = incomingRIPEntry.getAddress();
