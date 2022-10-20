@@ -305,11 +305,11 @@ public class Router extends Device
             long myMetricToAddress = myAddressEntry == null ? Integer.MAX_VALUE : myAddressEntry.getMetric();
             long myMetricToNextHop = myNextHopEntry == null ? Integer.MAX_VALUE : myNextHopEntry.getMetric();
             long dist = myMetricToNextHop + theirMetricNextHopToAddress + 1;
-            if (dist <= myMetricToAddress) {
+            if (theirMetricNextHopToAddress + 1 < myMetricToAddress) {
                 if (myAddressEntry != null)
-                    myAddressEntry.setMetric((int)dist);
+                    myAddressEntry.setMetric(theirMetricNextHopToAddress + 1);
                 else
-                    ripv2.addEntry(new RIPv2Entry(address, inIface.getSubnetMask(), (int)dist));
+                    ripv2.addEntry(new RIPv2Entry(address, inIface.getSubnetMask(), theirMetricNextHopToAddress + 1));
                     
                 if (this.routeTable.lookup(address) != null)
                     this.routeTable.update(address, inIface.getSubnetMask(), ip.getSourceAddress(), inIface);
