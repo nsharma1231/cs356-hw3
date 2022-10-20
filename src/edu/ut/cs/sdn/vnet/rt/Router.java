@@ -249,7 +249,7 @@ public class Router extends Device
 
         switch (arpPacket.getOpCode()) {
             case ARP.OP_REQUEST:
-                this.generateARP(etherPacket, inIface, ARP.OP_REPLY, 0);
+                // this.generateARP(etherPacket, inIface, ARP.OP_REPLY, 0);
                 break;
             case ARP.OP_REPLY:
                 MACAddress macAddress = new MACAddress(arpPacket.getSenderHardwareAddress());
