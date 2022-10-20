@@ -244,7 +244,7 @@ public class Router extends Device
     private void handleRipPacket(Ethernet etherPacket, Iface inIface)
     {
         System.out.println("------ " + this.getHost() + " ------\n" + this.routeTable.toString());
-
+        System.out.println("------ " + this.getHost() + " ------\n" + this.ripv2.toString());
         IPv4 ip = (IPv4) etherPacket.getPayload();
         UDP udp = (UDP) ip.getPayload();
         RIPv2 rip = (RIPv2) udp.getPayload();
